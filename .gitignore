@@ -1,2 +1,5 @@
 *.bc
 *.ll
+
+tests/intptr
+tests/bufptr
