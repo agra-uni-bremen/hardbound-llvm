@@ -4,5 +4,5 @@ main(void)
 	int i = 5;
 	int *j = &i;
 
-	return *j;
+	return *(j + 1);
 }
