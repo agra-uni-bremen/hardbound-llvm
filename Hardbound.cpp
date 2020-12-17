@@ -85,7 +85,7 @@ namespace {
         return nullptr;
 
       auto allocated = allocaInst->getAllocatedType();
-      size_t numbytes = allocated->getScalarSizeInBits() / 4;
+      size_t numbytes = allocated->getScalarSizeInBits() / 8;
 
       Instruction *setboundInstr = buildSetbound(builder, pointer, value, numbytes);
       errs() << "\n\n" << "GENERATED: " << *setboundInstr << '\n';
