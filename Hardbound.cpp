@@ -117,6 +117,6 @@ namespace {
 }
 
 char Hardbound::ID = 0;
-static RegisterPass<Hardbound> X("hardbound", "hardbound bounds compiler pass");
+static RegisterPass<Hardbound> X("hardbound", "hardbound setbounds compiler pass");
 
 /* vim: set et ts=2 sw=2: */
