@@ -15,11 +15,11 @@ using namespace llvm;
 
 #define DEBUG_TYPE "hardbound"
 
-#define SETBOUND_ASM \
-  "li a7, 98\n"      \
-  "mv a0, $0\n"      \
-  "mv a1, $1\n"      \
-  "mv a2, $2\n"      \
+#define SETBOUND_ASM  \
+  "li x17, 98\n"      \
+  "mv x10, $0\n"      \
+  "mv x11, $1\n"      \
+  "mv x12, $2\n"      \
   "ecall"
 #define SETBOUND_CONS \
   "r,r,r,~{x17},~{x10},~{x11},~{x12}"
