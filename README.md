@@ -31,7 +31,7 @@ these instructions, append a corresponding `setbound` call.
 
 ## Resources
 
-* https://releases.llvm.org/docs/WritingAnLLVMPass.html
+* https://llvm.org/docs/WritingAnLLVMPass.html
 * https://llvm.org/docs/ProgrammersManual.html
 * https://llvm.org/docs/LangRef.html
 * https://llvm.org/devmtg/2019-10/slides/Warzynski-WritingAnLLVMPass.pdf
