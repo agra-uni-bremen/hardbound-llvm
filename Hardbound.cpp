@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Instructions.h"
@@ -86,7 +88,7 @@ namespace {
       ssize_t numbytes = -1;
       if (allocaInst) {
         auto allocated = allocaInst->getAllocatedType();
-        numbytes = allocated->getScalarSizeInBits() / 8;
+        numbytes = allocated->getScalarSizeInBits() / CHAR_BIT;
       } else if (elemPtrInst) {
         auto sourceElem = elemPtrInst->getSourceElementType();
         if (!sourceElem->isArrayTy())
@@ -95,7 +97,7 @@ namespace {
         auto elems = sourceElem->getArrayNumElements();
         auto elem_size = sourceElem->getArrayElementType()->getScalarSizeInBits();
 
-        numbytes = elems * (elem_size / 8);
+        numbytes = elems * (elem_size / CHAR_BIT);
       }
 
       Instruction *setboundInstr;
