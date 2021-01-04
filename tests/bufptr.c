@@ -10,6 +10,8 @@ int
 main(void)
 {
 	char buf[4096];
-	myfunc(buf, sizeof(buf));
+	char *bufptr = buf;
+
+	myfunc(bufptr, sizeof(buf));
 	return 0;
 }
