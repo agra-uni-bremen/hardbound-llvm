@@ -96,6 +96,7 @@ namespace {
     ssize_t getValueByteSize(Value *value) {
       const AllocaInst *allocaInst = dyn_cast<AllocaInst>(value);
       const GetElementPtrInst *elemPtrInst = dyn_cast<GetElementPtrInst>(value);
+      const ConstantExpr *consExpr = dyn_cast<ConstantExpr>(value);
 
       ssize_t numbytes = -1;
       if (allocaInst) {
@@ -108,6 +109,23 @@ namespace {
 
         auto elems = sourceElem->getArrayNumElements();
         auto elem_size = sourceElem->getArrayElementType()->getScalarSizeInBits();
+
+        numbytes = elems * (elem_size / CHAR_BIT);
+      } else if (consExpr) {
+        if (consExpr->getOpcode() != Instruction::GetElementPtr)
+          return -1;
+
+        Value *operand   = consExpr->getOperand(0);
+        PointerType *ptr = dyn_cast<PointerType>(operand->getType());
+        if (!ptr)
+          return -1;
+
+        Type *t = ptr->getElementType();
+        if (!t->isArrayTy())
+          return -1;
+
+        auto elems = t->getArrayNumElements();
+        auto elem_size = t->getArrayElementType()->getScalarSizeInBits();
 
         numbytes = elems * (elem_size / CHAR_BIT);
       }
