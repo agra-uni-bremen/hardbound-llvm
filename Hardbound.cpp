@@ -110,13 +110,13 @@ namespace {
       const GlobalVariable *globalVar = dyn_cast<GlobalVariable>(value);
 
       ssize_t numbytes = -1;
-      if (allocaInst) {
+      if (allocaInst) { /* pointer to stack-based scalar */
         auto allocated = allocaInst->getAllocatedType();
         numbytes = allocated->getScalarSizeInBits() / CHAR_BIT;
-      } else if (elemPtrInst) {
+      } else if (elemPtrInst) { /* pointer to stack-based buffer */
         auto sourceElem = elemPtrInst->getSourceElementType();
         numbytes = getArraySize(sourceElem);
-      } else if (consExpr) {
+      } else if (consExpr) { /* pointer to constant/global buffer */
         if (consExpr->getOpcode() != Instruction::GetElementPtr)
           return -1;
 
@@ -126,7 +126,7 @@ namespace {
           return -1;
 
         numbytes = getArraySize(ptr->getElementType());
-      } else if (globalVar) {
+      } else if (globalVar) { /* pointer to global scalar */
         PointerType *ptr = dyn_cast<PointerType>(globalVar->getType());
         if (!ptr)
           return -1;
