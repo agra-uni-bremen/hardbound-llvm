@@ -93,6 +93,16 @@ namespace {
       return setboundInstr;
     }
 
+    ssize_t getArraySize(Type *type) {
+      if (!type->isArrayTy())
+        return -1;
+
+      auto elems = type->getArrayNumElements();
+      auto elem_size = type->getArrayElementType()->getScalarSizeInBits();
+
+      return elems * (elem_size / CHAR_BIT);
+    }
+
     ssize_t getValueByteSize(Value *value) {
       const AllocaInst *allocaInst = dyn_cast<AllocaInst>(value);
       const GetElementPtrInst *elemPtrInst = dyn_cast<GetElementPtrInst>(value);
@@ -104,30 +114,17 @@ namespace {
         numbytes = allocated->getScalarSizeInBits() / CHAR_BIT;
       } else if (elemPtrInst) {
         auto sourceElem = elemPtrInst->getSourceElementType();
-        if (!sourceElem->isArrayTy())
-          return -1;
-
-        auto elems = sourceElem->getArrayNumElements();
-        auto elem_size = sourceElem->getArrayElementType()->getScalarSizeInBits();
-
-        numbytes = elems * (elem_size / CHAR_BIT);
+        numbytes = getArraySize(sourceElem);
       } else if (consExpr) {
         if (consExpr->getOpcode() != Instruction::GetElementPtr)
           return -1;
 
-        Value *operand   = consExpr->getOperand(0);
+        Value *operand = consExpr->getOperand(0);
         PointerType *ptr = dyn_cast<PointerType>(operand->getType());
         if (!ptr)
           return -1;
 
-        Type *t = ptr->getElementType();
-        if (!t->isArrayTy())
-          return -1;
-
-        auto elems = t->getArrayNumElements();
-        auto elem_size = t->getArrayElementType()->getScalarSizeInBits();
-
-        numbytes = elems * (elem_size / CHAR_BIT);
+        numbytes = getArraySize(ptr->getElementType());
       }
 
       return numbytes;
