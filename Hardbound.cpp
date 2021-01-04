@@ -81,14 +81,28 @@ namespace {
       errs() << "\t\t" << "POINTER: " << *pointer << "\n\n";
 
       const AllocaInst *allocaInst = dyn_cast<AllocaInst>(value);
-      if (!allocaInst)
-        return nullptr;
+      const GetElementPtrInst *elemPtrInst = dyn_cast<GetElementPtrInst>(value);
 
-      auto allocated = allocaInst->getAllocatedType();
-      size_t numbytes = allocated->getScalarSizeInBits() / 8;
+      ssize_t numbytes = -1;
+      if (allocaInst) {
+        auto allocated = allocaInst->getAllocatedType();
+        numbytes = allocated->getScalarSizeInBits() / 8;
+      } else if (elemPtrInst) {
+        auto sourceElem = elemPtrInst->getSourceElementType();
+        if (!sourceElem->isArrayTy())
+          return NULL;
 
-      Instruction *setboundInstr = buildSetbound(builder, pointer, value, numbytes);
-      errs() << "\n\n" << "GENERATED: " << *setboundInstr << '\n';
+        auto elems = sourceElem->getArrayNumElements();
+        auto elem_size = sourceElem->getArrayElementType()->getScalarSizeInBits();
+
+        numbytes = elems * (elem_size / 8);
+      }
+
+      Instruction *setboundInstr;
+      if (numbytes != -1) {
+        setboundInstr = buildSetbound(builder, pointer, value, numbytes);
+        errs() << "\n\n" << "GENERATED: " << *setboundInstr << '\n';
+      }
 
       return setboundInstr;
     }
