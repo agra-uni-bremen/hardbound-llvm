@@ -27,6 +27,7 @@ using namespace llvm;
 namespace {
   struct Hardbound : public FunctionPass {
     static char ID; // Pass identification, replacement for typeid
+    LLVMContext context;
 
     Hardbound() : FunctionPass(ID) {}
 
@@ -56,7 +57,6 @@ namespace {
   private:
 
     Instruction *buildSetbound(IRBuilder<> &builder, Value *pointer, Value *base, size_t numbytes) {
-      LLVMContext context;
       auto u32 = IntegerType::get(context, 32);
 
       InlineAsm *Asm = InlineAsm::get(
