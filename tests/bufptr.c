@@ -1,9 +1,7 @@
 char
 myfunc(char *buf, int size)
 {
-	if (size >= 1)
-		return buf[0];
-	return '\0';
+	return buf[size];
 }
 
 int
