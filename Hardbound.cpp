@@ -107,6 +107,7 @@ namespace {
       const AllocaInst *allocaInst = dyn_cast<AllocaInst>(value);
       const GetElementPtrInst *elemPtrInst = dyn_cast<GetElementPtrInst>(value);
       const ConstantExpr *consExpr = dyn_cast<ConstantExpr>(value);
+      const GlobalVariable *globalVar = dyn_cast<GlobalVariable>(value);
 
       ssize_t numbytes = -1;
       if (allocaInst) {
@@ -125,6 +126,13 @@ namespace {
           return -1;
 
         numbytes = getArraySize(ptr->getElementType());
+      } else if (globalVar) {
+        PointerType *ptr = dyn_cast<PointerType>(globalVar->getType());
+        if (!ptr)
+          return -1;
+
+        auto type = ptr->getElementType();
+        numbytes = type->getScalarSizeInBits() / CHAR_BIT;
       }
 
       return numbytes;
