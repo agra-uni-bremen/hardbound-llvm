@@ -128,6 +128,16 @@ namespace {
       return ConstantInt::get(u32, total_size);
     }
 
+    Value *baseOffset(IRBuilder<> &builder, Value *offset, Type *source) {
+        if (!source->isArrayTy())
+          llvm_unreachable("getelementptr on non array type");
+
+        auto elemType = source->getArrayElementType();
+        auto elemSize = xsizeof(elemType);
+
+        return builder.CreateMul(offset, elemSize);
+    }
+
     Value *baseOffset(IRBuilder<> &builder, const GetElementPtrInst *instr) {
         /* From the LLVM Language Reference Manual:
          *   […] the second index indexes a value of the type pointed to.
@@ -140,13 +150,7 @@ namespace {
         Value *offset = *it;
 
         auto source = instr->getSourceElementType();
-        if (!source->isArrayTy())
-          llvm_unreachable("getelementptr on non array type");
-
-        auto elemType = source->getArrayElementType();
-        auto elemSize = xsizeof(elemType);
-
-        return builder.CreateMul(offset, elemSize);
+        return baseOffset(builder, offset, source);
     }
 
     Value *getValueByteSize(IRBuilder<> &builder, Value *value) {
@@ -176,7 +180,12 @@ namespace {
         if (!ptr)
           return nullptr;
 
-        numbytes = getArraySize(ptr->getElementType());
+        /* the second index indexes a value of the type pointed to */
+        Value *index = consExpr->getOperand(2);
+        Type *source = ptr->getElementType();
+
+        Value *offset = baseOffset(builder, index, source);
+        numbytes = builder.CreateSub(xsizeof(source), offset);
       } else if (globalVar) { /* pointer to global scalar */
         PointerType *ptr = dyn_cast<PointerType>(globalVar->getType());
         if (!ptr)
