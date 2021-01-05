@@ -1,6 +1,6 @@
 #include <stdint.h>
 
-int i = 32;
+uint32_t i = 32;
 
 int
 main(void)
