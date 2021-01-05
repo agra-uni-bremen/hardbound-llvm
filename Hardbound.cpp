@@ -125,7 +125,7 @@ namespace {
       auto elems = type->getArrayNumElements();
       auto elem_size = xsizeof(type->getArrayElementType());
 
-      return elems * (elem_size / CHAR_BIT);
+      return elems * elem_size;
     }
 
     ssize_t getValueByteSize(Value *value) {
