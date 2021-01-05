@@ -28,13 +28,18 @@ using namespace llvm;
 namespace {
   struct Hardbound : public FunctionPass {
     static char ID; // Pass identification, replacement for typeid
+
     LLVMContext context;
+    DataLayout *DL;
 
     Hardbound() : FunctionPass(ID) {}
 
     bool runOnFunction(Function &F) override {
       errs() << "Hardbound: ";
       errs().write_escaped(F.getName()) << '\n';
+
+      DataLayout dataLayout = F.getParent()->getDataLayout();
+      DL = &dataLayout;
 
       bool modified = false;
       for (auto it = F.begin(); it != F.end(); it++) {
@@ -100,19 +105,8 @@ namespace {
 
       StructType *tstruct = dyn_cast<StructType>(type);
       if (tstruct) {
-        size_t numbytes = 0;
-
-        for (auto it = tstruct->element_begin(); it != tstruct->element_end(); it++) {
-          ssize_t size;
-
-          if ((size = xsizeof(*it)) == -1)
-            return -1;
-
-          assert(size > 0);
-          numbytes += size;
-        }
-
-        return numbytes;
+        const StructLayout *sl = DL->getStructLayout(tstruct);
+        return sl->getSizeInBytes();
       }
 
       return type->getScalarSizeInBits() / CHAR_BIT;
