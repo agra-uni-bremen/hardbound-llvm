@@ -89,47 +89,52 @@ namespace {
       errs() << "\t\t" << "VALUE: " << *value << '\n';
       errs() << "\t\t" << "POINTER: " << *pointer << "\n\n";
 
-      ssize_t numbytes = getValueByteSize(value);
-      if (numbytes == -1)
+      Value *numbytes = getValueByteSize(value);
+      if (!numbytes)
         return nullptr;
-      Value *numbytes_value = ConstantInt::get(u32, numbytes);
 
-      Instruction *setboundInstr = buildSetbound(builder, pointer, value, numbytes_value);
+      Instruction *setboundInstr = buildSetbound(builder, pointer, value, numbytes);
       errs() << "\n\n" << "GENERATED: " << *setboundInstr << '\n';
 
       return setboundInstr;
     }
 
-    ssize_t xsizeof(Type *type) {
+    Value *xsizeof(Type *type) {
       if (type->isArrayTy())
         return getArraySize(type);
 
       StructType *tstruct = dyn_cast<StructType>(type);
       if (tstruct) {
         const StructLayout *sl = DL->getStructLayout(tstruct);
-        return sl->getSizeInBytes();
+        return ConstantInt::get(u32, sl->getSizeInBytes());
       }
 
-      return type->getScalarSizeInBits() / CHAR_BIT;
+      auto size = type->getScalarSizeInBits() / CHAR_BIT;
+      return ConstantInt::get(u32, size);
     }
 
-    ssize_t getArraySize(Type *type) {
+    Value *getArraySize(Type *type) {
       if (!type->isArrayTy())
-        return -1;
+        return nullptr;
 
       auto elems = type->getArrayNumElements();
       auto elem_size = xsizeof(type->getArrayElementType());
 
-      return elems * elem_size;
+      auto elem_size_const = dyn_cast<llvm::ConstantInt>(elem_size);
+      if (!elem_size)
+        llvm_unreachable("elem_size is not constant");
+
+      size_t total_size = elems * elem_size_const->getZExtValue();
+      return ConstantInt::get(u32, total_size);
     }
 
-    ssize_t getValueByteSize(Value *value) {
+    Value *getValueByteSize(Value *value) {
       const AllocaInst *allocaInst = dyn_cast<AllocaInst>(value);
       const GetElementPtrInst *elemPtrInst = dyn_cast<GetElementPtrInst>(value);
       const ConstantExpr *consExpr = dyn_cast<ConstantExpr>(value);
       const GlobalVariable *globalVar = dyn_cast<GlobalVariable>(value);
 
-      ssize_t numbytes = -1;
+      Value *numbytes = nullptr;
       if (allocaInst) { /* pointer to stack-based scalar */
         auto allocated = allocaInst->getAllocatedType();
         numbytes = xsizeof(allocated);
@@ -138,18 +143,18 @@ namespace {
         numbytes = xsizeof(sourceElem);
       } else if (consExpr) { /* pointer to constant/global buffer */
         if (consExpr->getOpcode() != Instruction::GetElementPtr)
-          return -1;
+          return nullptr;
 
         Value *operand = consExpr->getOperand(0);
         PointerType *ptr = dyn_cast<PointerType>(operand->getType());
         if (!ptr)
-          return -1;
+          return nullptr;
 
         numbytes = getArraySize(ptr->getElementType());
       } else if (globalVar) { /* pointer to global scalar */
         PointerType *ptr = dyn_cast<PointerType>(globalVar->getType());
         if (!ptr)
-          return -1;
+          return nullptr;
 
         numbytes = xsizeof(ptr->getElementType());
       }
