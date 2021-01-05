@@ -8,18 +8,20 @@ CFLAGS  += -target riscv32-unknown-elf
 CFLAGS  += -march=rv32i -mabi=ilp32
 LDFLAGS += -nostartfiles
 
-all: intptr intptr.bc intptr.ll
+SOURCES  = $(wildcard *.c)
+PROGRAMS = $(SOURCES:.c=)
 
-%.ll: %.c
+all: $(PROGRAMS)
+
+%.bc: %.c
 	$(CC) -emit-llvm -S -c -o $@ $< $(CFLAGS)
-%.bc: %.ll
+%.ll: %.bc
 	opt -load $(HARDBOUND) -hardbound 2>/dev/null < $< > $@
-%.o: %.bc
+%.o: %.ll
 	$(CC) -c -o $@ $< $(CFLAGS)
-%: %.o
+%: bootstrap.o %.o
 	$(LD) -o $@ $^ $(LDFLAGS)
 
-intptr: bootstrap.o intptr.o
 bootstrap.o: bootstrap.S
 	$(CC) -c -o $@ $< $(CFLAGS)
 
