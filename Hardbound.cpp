@@ -154,6 +154,9 @@ namespace {
     }
 
     Value *getValueByteSize(IRBuilder<> &builder, Value *value) {
+      /* Discard pointer casts as they are(?) irrelevant for this analysis. */
+      value = value->stripPointerCasts();
+
       const AllocaInst *allocaInst = dyn_cast<AllocaInst>(value);
       const GetElementPtrInst *elemPtrInst = dyn_cast<GetElementPtrInst>(value);
       const ConstantExpr *consExpr = dyn_cast<ConstantExpr>(value);
