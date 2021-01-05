@@ -89,7 +89,7 @@ namespace {
       errs() << "\t\t" << "VALUE: " << *value << '\n';
       errs() << "\t\t" << "POINTER: " << *pointer << "\n\n";
 
-      Value *numbytes = getValueByteSize(value);
+      Value *numbytes = getValueByteSize(builder, value);
       if (!numbytes)
         return nullptr;
 
@@ -128,7 +128,28 @@ namespace {
       return ConstantInt::get(u32, total_size);
     }
 
-    Value *getValueByteSize(Value *value) {
+    Value *baseOffset(IRBuilder<> &builder, const GetElementPtrInst *instr) {
+        /* From the LLVM Language Reference Manual:
+         *   […] the second index indexes a value of the type pointed to.
+         */
+        auto indices = instr->getNumIndices();
+        if (indices < 2)
+          return nullptr;
+
+        auto it = std::next(instr->idx_begin(), 1);
+        Value *offset = *it;
+
+        auto source = instr->getSourceElementType();
+        if (!source->isArrayTy())
+          llvm_unreachable("getelementptr on non array type");
+
+        auto elemType = source->getArrayElementType();
+        auto elemSize = xsizeof(elemType);
+
+        return builder.CreateMul(offset, elemSize);
+    }
+
+    Value *getValueByteSize(IRBuilder<> &builder, Value *value) {
       const AllocaInst *allocaInst = dyn_cast<AllocaInst>(value);
       const GetElementPtrInst *elemPtrInst = dyn_cast<GetElementPtrInst>(value);
       const ConstantExpr *consExpr = dyn_cast<ConstantExpr>(value);
@@ -140,7 +161,12 @@ namespace {
         numbytes = xsizeof(allocated);
       } else if (elemPtrInst) { /* pointer to stack-based buffer */
         auto sourceElem = elemPtrInst->getSourceElementType();
+
         numbytes = xsizeof(sourceElem);
+        Value *offset = baseOffset(builder, elemPtrInst);
+
+        assert(offset && numbytes);
+        numbytes = builder.CreateSub(numbytes, offset);
       } else if (consExpr) { /* pointer to constant/global buffer */
         if (consExpr->getOpcode() != Instruction::GetElementPtr)
           return nullptr;
