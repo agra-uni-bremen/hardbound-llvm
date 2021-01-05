@@ -27,3 +27,4 @@ bootstrap.o: bootstrap.S
 
 .PHONY: all
 .SUFFIXES:
+.SECONDARY:
