@@ -10,8 +10,8 @@ find . -type f \( -perm -u=x -o -perm -g=x -o -perm -o=x \) | while read f; do
 	printf "Running test case %s: " "${f##*/}"
 
 	reg=$(tiny32-vp --intercept-syscalls "${f}" 2>/dev/null | awk '/^a6/ { print $4 }')
-	if [ "${reg}" -ne 2342 ]; then
-		printf "FAIL [expected %d - got %d]\n" "2342" "${reg}\n"
+	if [ "${reg}" != "2342" ]; then
+		printf "FAIL [expected %s - got %s]\n" "2342" "${reg}"
 		retval=1
 		continue
 	fi
