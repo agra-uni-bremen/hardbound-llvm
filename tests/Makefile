@@ -26,5 +26,9 @@ bootstrap.o: bootstrap.S
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 .PHONY: all
+
+# Disable all implicit makefile rules
 .SUFFIXES:
+
+# Make sure that intermediate files are not deleted
 .SECONDARY:
