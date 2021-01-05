@@ -156,8 +156,7 @@ namespace {
         if (!ptr)
           return -1;
 
-        auto type = ptr->getElementType();
-        numbytes = type->getScalarSizeInBits() / CHAR_BIT;
+        numbytes = xsizeof(ptr->getElementType());
       }
 
       return numbytes;
