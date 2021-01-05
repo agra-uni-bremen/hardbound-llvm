@@ -30,6 +30,7 @@ namespace {
     static char ID; // Pass identification, replacement for typeid
 
     LLVMContext context;
+    IntegerType *u32;
     DataLayout *DL;
 
     Hardbound() : FunctionPass(ID) {}
@@ -40,6 +41,8 @@ namespace {
 
       DataLayout dataLayout = F.getParent()->getDataLayout();
       DL = &dataLayout;
+
+      u32 = IntegerType::get(context, 32);
 
       bool modified = false;
       for (auto it = F.begin(); it != F.end(); it++) {
@@ -62,20 +65,17 @@ namespace {
 
   private:
 
-    Instruction *buildSetbound(IRBuilder<> &builder, Value *pointer, Value *base, size_t numbytes) {
-      auto u32 = IntegerType::get(context, 32);
-
+    Instruction *buildSetbound(IRBuilder<> &builder, Value *pointer, Value *base, Value *numbytes) {
       InlineAsm *Asm = InlineAsm::get(
           FunctionType::get(builder.getVoidTy(), {u32, u32, u32}, false),
           StringRef(SETBOUND_ASM),
           StringRef(SETBOUND_CONS),
           true);
 
-      auto size = ConstantInt::get(u32, numbytes);
       auto ptrInt = builder.CreatePtrToInt(pointer, u32);
       auto baseInt = builder.CreatePtrToInt(base, u32);
 
-      return builder.CreateCall(Asm, {ptrInt, baseInt, size}, "");
+      return builder.CreateCall(Asm, {ptrInt, baseInt, numbytes}, "");
     }
 
     Instruction *runOnStoreInstr(IRBuilder<> &builder, StoreInst &storeInst) {
@@ -92,8 +92,9 @@ namespace {
       ssize_t numbytes = getValueByteSize(value);
       if (numbytes == -1)
         return nullptr;
+      Value *numbytes_value = ConstantInt::get(u32, numbytes);
 
-      Instruction *setboundInstr = buildSetbound(builder, pointer, value, numbytes);
+      Instruction *setboundInstr = buildSetbound(builder, pointer, value, numbytes_value);
       errs() << "\n\n" << "GENERATED: " << *setboundInstr << '\n';
 
       return setboundInstr;
