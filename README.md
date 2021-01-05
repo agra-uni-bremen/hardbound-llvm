@@ -19,7 +19,17 @@ should result in `llvm/build/lib/LLVMHardbound.so` being generated.
 
 After generating `LLVMHardbound.so` run:
 
-	opt -load LLVMHardbound.so -hardbound < code.bc > code-with-setbound.bc
+	$ opt -load LLVMHardbound.so -hardbound < code.bc > code-with-setbound.bc
+
+## Tests
+
+Several tiny test programs are available, these must be compiled using:
+
+	$ make -C tests
+
+Afterwards, tests can be run using
+
+	$ ./tests/run_tests.sh
 
 ## Idea
 
