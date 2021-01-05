@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -93,12 +94,36 @@ namespace {
       return setboundInstr;
     }
 
+    ssize_t xsizeof(Type *type) {
+      if (type->isArrayTy())
+        return getArraySize(type);
+
+      StructType *tstruct = dyn_cast<StructType>(type);
+      if (tstruct) {
+        size_t numbytes = 0;
+
+        for (auto it = tstruct->element_begin(); it != tstruct->element_end(); it++) {
+          ssize_t size;
+
+          if ((size = xsizeof(*it)) == -1)
+            return -1;
+
+          assert(size > 0);
+          numbytes += size;
+        }
+
+        return numbytes;
+      }
+
+      return type->getScalarSizeInBits() / CHAR_BIT;
+    }
+
     ssize_t getArraySize(Type *type) {
       if (!type->isArrayTy())
         return -1;
 
       auto elems = type->getArrayNumElements();
-      auto elem_size = type->getArrayElementType()->getScalarSizeInBits();
+      auto elem_size = xsizeof(type->getArrayElementType());
 
       return elems * (elem_size / CHAR_BIT);
     }
@@ -112,10 +137,10 @@ namespace {
       ssize_t numbytes = -1;
       if (allocaInst) { /* pointer to stack-based scalar */
         auto allocated = allocaInst->getAllocatedType();
-        numbytes = allocated->getScalarSizeInBits() / CHAR_BIT;
+        numbytes = xsizeof(allocated);
       } else if (elemPtrInst) { /* pointer to stack-based buffer */
         auto sourceElem = elemPtrInst->getSourceElementType();
-        numbytes = getArraySize(sourceElem);
+        numbytes = xsizeof(sourceElem);
       } else if (consExpr) { /* pointer to constant/global buffer */
         if (consExpr->getOpcode() != Instruction::GetElementPtr)
           return -1;
