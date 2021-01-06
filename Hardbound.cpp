@@ -30,7 +30,6 @@ namespace {
     static char ID; // Pass identification, replacement for typeid
 
     LLVMContext context;
-    IntegerType *u32;
     DataLayout *DL;
 
     Hardbound() : FunctionPass(ID) {}
@@ -41,8 +40,6 @@ namespace {
 
       DataLayout dataLayout = F.getParent()->getDataLayout();
       DL = &dataLayout;
-
-      u32 = IntegerType::get(context, 32);
 
       bool modified = false;
       for (auto it = F.begin(); it != F.end(); it++) {
@@ -66,14 +63,16 @@ namespace {
   private:
 
     Instruction *buildSetbound(IRBuilder<> &builder, Value *pointer, Value *base, Value *numbytes) {
+      auto i32 = builder.getInt32Ty();
+
       InlineAsm *Asm = InlineAsm::get(
-          FunctionType::get(builder.getVoidTy(), {u32, u32, u32}, false),
+          FunctionType::get(builder.getVoidTy(), {i32, i32, i32}, false),
           StringRef(SETBOUND_ASM),
           StringRef(SETBOUND_CONS),
           true);
 
-      auto ptrInt = builder.CreatePtrToInt(pointer, u32);
-      auto baseInt = builder.CreatePtrToInt(base, u32);
+      auto ptrInt = builder.CreatePtrToInt(pointer, i32);
+      auto baseInt = builder.CreatePtrToInt(base, i32);
 
       return builder.CreateCall(Asm, {ptrInt, baseInt, numbytes}, "");
     }
@@ -99,33 +98,33 @@ namespace {
       return setboundInstr;
     }
 
-    Value *xsizeof(Type *type) {
+    Value *xsizeof(IRBuilder<> &builder, Type *type) {
       if (type->isArrayTy())
-        return getArraySize(type);
+        return getArraySize(builder, type);
 
       StructType *tstruct = dyn_cast<StructType>(type);
       if (tstruct) {
         const StructLayout *sl = DL->getStructLayout(tstruct);
-        return ConstantInt::get(u32, sl->getSizeInBytes());
+        return builder.getInt32(sl->getSizeInBytes());
       }
 
       auto size = type->getScalarSizeInBits() / CHAR_BIT;
-      return ConstantInt::get(u32, size);
+      return builder.getInt32(size);
     }
 
-    Value *getArraySize(Type *type) {
+    Value *getArraySize(IRBuilder<> &builder, Type *type) {
       if (!type->isArrayTy())
         return nullptr;
 
       auto elems = type->getArrayNumElements();
-      auto elem_size = xsizeof(type->getArrayElementType());
+      auto elem_size = xsizeof(builder, type->getArrayElementType());
 
       auto elem_size_const = dyn_cast<llvm::ConstantInt>(elem_size);
       if (!elem_size)
         llvm_unreachable("elem_size is not constant");
 
       size_t total_size = elems * elem_size_const->getZExtValue();
-      return ConstantInt::get(u32, total_size);
+      return builder.getInt32(total_size);
     }
 
     Value *baseOffset(IRBuilder<> &builder, Value *offset, Type *source) {
@@ -133,7 +132,7 @@ namespace {
           llvm_unreachable("getelementptr on non array type");
 
         auto elemType = source->getArrayElementType();
-        auto elemSize = xsizeof(elemType);
+        auto elemSize = xsizeof(builder, elemType);
 
         return builder.CreateMul(offset, elemSize);
     }
@@ -165,11 +164,11 @@ namespace {
       Value *numbytes = nullptr;
       if (allocaInst) { /* pointer to stack-based scalar */
         auto allocated = allocaInst->getAllocatedType();
-        numbytes = xsizeof(allocated);
+        numbytes = xsizeof(builder, allocated);
       } else if (elemPtrInst) { /* pointer to stack-based buffer */
         auto sourceElem = elemPtrInst->getSourceElementType();
 
-        numbytes = xsizeof(sourceElem);
+        numbytes = xsizeof(builder, sourceElem);
         Value *offset = baseOffset(builder, elemPtrInst);
 
         assert(offset && numbytes);
@@ -188,13 +187,13 @@ namespace {
         Type *source = ptr->getElementType();
 
         Value *offset = baseOffset(builder, index, source);
-        numbytes = builder.CreateSub(xsizeof(source), offset);
+        numbytes = builder.CreateSub(xsizeof(builder, source), offset);
       } else if (globalVar) { /* pointer to global scalar */
         PointerType *ptr = dyn_cast<PointerType>(globalVar->getType());
         if (!ptr)
           return nullptr;
 
-        numbytes = xsizeof(ptr->getElementType());
+        numbytes = xsizeof(builder, ptr->getElementType());
       }
 
       return numbytes;
