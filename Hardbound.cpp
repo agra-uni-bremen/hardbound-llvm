@@ -55,18 +55,30 @@ namespace {
         BasicBlock &bb = *it;
 
         for (auto instrIt = bb.begin(); instrIt != bb.end(); instrIt++) {
-          LoadInst *loadInst = dyn_cast<LoadInst>(instrIt);
-          if (loadInst) {
+          if (LoadInst *loadInst = dyn_cast<LoadInst>(instrIt)) {
             IRBuilder<> builder = IRBuilder<>(loadInst);
             auto newLoad = runOnLoadInstr(builder, loadInst);
             if (!newLoad)
               continue;
 
             ReplaceInstWithInst(bb.getInstList(), instrIt, newLoad);
-            errs() << bb << '\n';
+
             modified = true;
+            continue;
+          } else if (CallInst *callInst = dyn_cast<CallInst>(instrIt)) {
+            IRBuilder<> builder = IRBuilder<>(callInst);
+            auto newCall = runOnCallInst(builder, callInst);
+            if (!newCall)
+              continue;
+
+            ReplaceInstWithInst(bb.getInstList(), instrIt, newCall);
+
+            modified = true;
+            continue;
           }
         }
+
+        errs() << bb << '\n';
       }
 
       return modified;
@@ -94,8 +106,8 @@ namespace {
       return *it;
     }
 
-    LoadInst *transformArrayAccess(IRBuilder<> &builder, GetElementPtrInst *gep, ArrayType *array) {
-      auto elemType = array->getElementType();
+    Value *getArrayPointer(IRBuilder<> &builder, Value *array, ArrayType *arrayTy, Value *index) {
+      auto elemType = arrayTy->getElementType();
       auto ptrType = PointerType::get(elemType, 0);
 
       // Alloc space for pointer to array on the stack.
@@ -103,7 +115,7 @@ namespace {
       allocInstr->setAlignment(DL->getPointerPrefAlignment());
 
       // Create a pointer to the first element of the array.
-      Value *elemPtr = builder.CreateGEP(gep->getPointerOperand(), builder.getInt32(0));
+      Value *elemPtr = builder.CreateGEP(array, builder.getInt32(0));
       shouldBeInBounds(elemPtr);
 
       // Store pointer to array in stack space created by alloca.
@@ -121,12 +133,18 @@ namespace {
 
       // Using the loaded pointer, create a getelementptr instruction
       // which access the value previously accessed directly.
-      Value *index = getElemPtrIndex(gep);
       Value *elem = builder.CreateGEP(elemType, loadInst, index);
       shouldBeInBounds(elem);
 
-      // Load the value returned by the getelementptr instruction.
-      auto finalLoad = builder.CreateLoad(elemType, elem);
+      return elem;
+    }
+
+    LoadInst *transformArrayAccess(IRBuilder<> &builder, GetElementPtrInst *gep, ArrayType *arrayTy) {
+      Value *index = getElemPtrIndex(gep);
+      Value *ptr = getArrayPointer(builder, gep->getPointerOperand(), arrayTy, index);
+
+      // Load the value returned by the created getelementptr instruction.
+      auto finalLoad = builder.CreateLoad(arrayTy->getElementType(), ptr);
       return finalLoad;
     }
 
@@ -148,10 +166,40 @@ namespace {
       auto newLoad = transformArrayAccess(builder, elemPtrInst, array);
       newLoad->setAlignment(loadInst->getAlign());
 
-      errs() << "oldLoad: " << *loadInst << '\n';
-      errs() << "newLoad: " << *newLoad << '\n';
-
       return newLoad;
+    }
+
+    Instruction *runOnCallInst(IRBuilder<> &builder, CallInst *callInst) {
+      bool modified = true;
+
+      for (size_t i = 0; i < callInst->arg_size(); i++) {
+        Value *arg = callInst->getArgOperand(i);
+
+        const ConstantExpr *consExpr = dyn_cast<ConstantExpr>(arg);
+        if (!consExpr)
+          return nullptr;
+        if (consExpr->getOpcode() != Instruction::GetElementPtr)
+          return nullptr;
+
+        Value *arrayPtr  = consExpr->getOperand(0);
+        PointerType *ptr = dyn_cast<PointerType>(arrayPtr->getType());
+        if (!ptr)
+          return nullptr;
+
+        ArrayType *arrayTy = dyn_cast<ArrayType>(ptr->getElementType());
+        if (!arrayTy)
+          return nullptr;
+
+        Value *index = consExpr->getOperand(2);
+        Value *transformed = getArrayPointer(builder, arrayPtr, arrayTy, index);
+        if (!transformed)
+          return nullptr;
+
+        callInst->setArgOperand(i, transformed);
+        modified = true;
+      }
+
+      return (modified) ? callInst : nullptr;
     }
   };
 
