@@ -55,26 +55,18 @@ namespace {
         BasicBlock &bb = *it;
 
         for (auto instrIt = bb.begin(); instrIt != bb.end(); instrIt++) {
+          Instruction *newInstr = nullptr;
           if (LoadInst *loadInst = dyn_cast<LoadInst>(instrIt)) {
             IRBuilder<> builder = IRBuilder<>(loadInst);
-            auto newLoad = runOnLoadInstr(builder, loadInst);
-            if (!newLoad)
-              continue;
-
-            ReplaceInstWithInst(bb.getInstList(), instrIt, newLoad);
-
-            modified = true;
-            continue;
+            newInstr = runOnLoadInstr(builder, loadInst);
           } else if (CallInst *callInst = dyn_cast<CallInst>(instrIt)) {
             IRBuilder<> builder = IRBuilder<>(callInst);
-            auto newCall = runOnCallInst(builder, callInst);
-            if (!newCall)
-              continue;
+            newInstr = runOnCallInst(builder, callInst);
+          }
 
-            ReplaceInstWithInst(bb.getInstList(), instrIt, newCall);
-
+          if (newInstr) {
+            ReplaceInstWithInst(bb.getInstList(), instrIt, newInstr);
             modified = true;
-            continue;
           }
         }
 
