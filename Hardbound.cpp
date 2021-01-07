@@ -8,6 +8,7 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InlineAsm.h"
 #include "llvm/IR/DerivedTypes.h"
+#include "llvm/Transforms/Utils/BasicBlockUtils.h"
 
 #include "llvm/Pass.h"
 #include "llvm/Support/raw_ostream.h"
@@ -26,16 +27,137 @@ using namespace llvm;
   "r,r,r,~{x17},~{x10},~{x11},~{x12}"
 
 namespace {
-  struct Hardbound : public FunctionPass {
+
+  struct Array2Pointer : public FunctionPass {
+    static char ID; // Pass identification, replacement for typeid
+    DataLayout *DL;
+
+    Array2Pointer() : FunctionPass(ID) {}
+
+    bool runOnFunction(Function &F) override {
+      errs() << "Array2Pointer: ";
+      errs().write_escaped(F.getName()) << '\n';
+
+      DataLayout dataLayout = F.getParent()->getDataLayout();
+      DL = &dataLayout;
+
+      bool modified = false;
+      for (auto it = F.begin(); it != F.end(); it++) {
+        BasicBlock &bb = *it;
+
+        for (auto instrIt = bb.begin(); instrIt != bb.end(); instrIt++) {
+          LoadInst *loadInst = dyn_cast<LoadInst>(instrIt);
+          if (loadInst) {
+            IRBuilder<> builder = IRBuilder<>(loadInst);
+            auto newLoad = runOnLoadInstr(builder, loadInst);
+            if (!newLoad)
+              continue;
+
+            ReplaceInstWithInst(bb.getInstList(), instrIt, newLoad);
+            errs() << bb << '\n';
+            modified = true;
+          }
+        }
+      }
+
+      return modified;
+    }
+
+  private:
+
+    void shouldBeInBounds(Value *value) {
+      GetElementPtrInst *elemInstr = dyn_cast<GetElementPtrInst>(value);
+      if (!elemInstr)
+        return;
+
+      elemInstr->setIsInBounds(true);
+    }
+
+    Value *getElemPtrIndex(GetElementPtrInst *instr) {
+      /* From the LLVM Language Reference Manual:
+       *   […] the second index indexes a value of the type pointed to.
+       */
+      auto indices = instr->getNumIndices();
+      if (indices < 2)
+        llvm_unreachable("unexpected number of GEP indicies");
+      auto it = std::next(instr->idx_begin(), 1);
+
+      return *it;
+    }
+
+    LoadInst *transformArrayAccess(IRBuilder<> &builder, GetElementPtrInst *gep, ArrayType *array) {
+      auto elemType = array->getElementType();
+      auto ptrType = PointerType::get(elemType, 0);
+
+      // Alloc space for pointer to array on the stack.
+      auto allocInstr = builder.CreateAlloca(ptrType);
+      allocInstr->setAlignment(DL->getPointerPrefAlignment());
+
+      // Create a pointer to the first element of the array.
+      Value *elemPtr = builder.CreateGEP(gep->getPointerOperand(), builder.getInt32(0));
+      errs() << "elemPtr: " << *elemPtr << '\n';
+      shouldBeInBounds(elemPtr);
+
+      // Store pointer to array in stack space created by alloca.
+      auto ptr = builder.CreatePointerCast(elemPtr, ptrType);
+      auto storeInst = builder.CreateStore(ptr, allocInstr);
+      storeInst->setAlignment(DL->getPointerPrefAlignment());
+
+      // At this point: Pointer to array at index 0 is stored on stack
+      // This store should be detected and instrumented by the Setbound pass.
+      //
+      // Next step: Load ptr and access the previously accessed array
+      // index using the stored pointer later instrumented with Setbound.
+      auto loadInst = builder.CreateLoad(ptrType, allocInstr);
+      loadInst->setAlignment(DL->getPointerPrefAlignment());
+
+      // Using the loaded pointer, create a getelementptr instruction
+      // which access the value previously accessed directly.
+      Value *index = getElemPtrIndex(gep);
+      Value *elem = builder.CreateGEP(elemType, loadInst, index);
+      shouldBeInBounds(elem);
+
+      // Load the value returned by the getelementptr instruction.
+      auto finalLoad = builder.CreateLoad(elemType, elem);
+      return finalLoad;
+    }
+
+    Instruction *runOnLoadInstr(IRBuilder<> &builder, LoadInst *loadInst) {
+      Value *pointer = loadInst->getPointerOperand();
+      GetElementPtrInst *elemPtrInst = dyn_cast<GetElementPtrInst>(pointer);
+      if (!elemPtrInst)
+        return nullptr;
+
+      Type *opType = elemPtrInst->getPointerOperandType();
+      PointerType *ptr = dyn_cast<PointerType>(opType);
+      if (!ptr)
+        return nullptr;
+
+      ArrayType *array = dyn_cast<ArrayType>(ptr->getElementType());
+      if (!array)
+        return nullptr;
+
+      auto newLoad = transformArrayAccess(builder, elemPtrInst, array);
+      newLoad->setAlignment(loadInst->getAlign());
+
+      errs() << "oldLoad: " << *loadInst << '\n';
+      errs() << "newLoad: " << *newLoad << '\n';
+
+      return newLoad;
+    }
+  };
+
+
+  struct Setbound : public FunctionPass {
     static char ID; // Pass identification, replacement for typeid
 
     LLVMContext context;
     DataLayout *DL;
 
-    Hardbound() : FunctionPass(ID) {}
+    Setbound() : FunctionPass(ID) {}
 
     bool runOnFunction(Function &F) override {
-      errs() << "Hardbound: ";
+      errs() << "Setbound: ";
       errs().write_escaped(F.getName()) << '\n';
 
       DataLayout dataLayout = F.getParent()->getDataLayout();
@@ -199,9 +321,13 @@ namespace {
       return numbytes;
     }
   };
+
 }
 
-char Hardbound::ID = 0;
-static RegisterPass<Hardbound> X("hardbound", "hardbound setbounds compiler pass");
+char Array2Pointer::ID = 0;
+static RegisterPass<Array2Pointer> A("array2pointer", "hardbound array2pointer compiler pass");
+
+char Setbound::ID = 0;
+static RegisterPass<Setbound> S("setbound", "hardbound setbounds compiler pass");
 
 /* vim: set et ts=2 sw=2: */
