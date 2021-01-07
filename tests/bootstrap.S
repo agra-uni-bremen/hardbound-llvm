@@ -5,6 +5,12 @@ ecall
 .endm
 
 irq_handler:
+	/* Check if exception code is a load access fault */
+	csrr t0, mcause
+	li t1, 5 /* load access fault */
+	beq t0, t1, succ
+	SYS_EXIT 0 /* fail */
+succ:
 	li a6, 0x2342 /* success pattern */
 	SYS_EXIT 1
 
