@@ -152,15 +152,25 @@ Instruction *
 Array2Pointer::runOnStoreInstr(StoreInst *storeInst)
 {
   Value *value = storeInst->getValueOperand();
-  Value *arrayPointer = value2array(value);
-  if (!arrayPointer)
-    return nullptr;
+  Value *pointer = storeInst->getPointerOperand();
 
-  auto newStore = builder->CreateStore(arrayPointer,
-      storeInst->getPointerOperand(),
-      storeInst->isVolatile());
-  newStore->setAlignment(storeInst->getAlign());
+  // Distinguish the following cases:
+  //   1. Store where value is a pointer (e.g. where the address of the
+  //      buffer is stored somewhere, like `int *buf = &buf[5]`).
+  //   2. Store where the pointer operand (address where value should be
+  //      stored) points to a getelementptr, e.g. `buf[5] = '\0'`.
 
+  StoreInst *newStore = nullptr;
+  if (Value *arrayPointer = value2array(value)) {
+    newStore = builder->CreateStore(arrayPointer,
+        pointer, storeInst->isVolatile());
+  } else if (Value *arrayPointer = value2array(pointer)) {
+    newStore = builder->CreateStore(value,
+        arrayPointer, storeInst->isVolatile());
+  }
+
+  if (newStore)
+    newStore->setAlignment(storeInst->getAlign());
   return newStore;
 }
 
