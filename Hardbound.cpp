@@ -28,6 +28,15 @@ using namespace llvm;
 
 namespace {
 
+  /**
+   * Array2Pointer compiler pass.
+   *
+   * This compiler pass rewrites direct array accesses to access through
+   * pointer arithmetic. This is neccessary because the former cannot be
+   * instrumented by the Hardbound pass and therefore not checked for
+   * spatial memory safety violations. The rewrite peformed by the
+   * Array2Pointer pass should not affect observable program behaviour.
+   */
   struct Array2Pointer : public FunctionPass {
     static char ID; // Pass identification, replacement for typeid
     DataLayout *DL;
@@ -147,7 +156,14 @@ namespace {
     }
   };
 
-
+  /**
+   * Setbound compiler pass.
+   *
+   * This compiler pass instruments store instructions, inserting a
+   * setbound instruction for each store which represents a pointer.
+   * This allows bounds-checking to be peformed in the Hardware as
+   * described in the original Hardbound paper.
+   */
   struct Setbound : public FunctionPass {
     static char ID; // Pass identification, replacement for typeid
 
