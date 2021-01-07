@@ -104,7 +104,6 @@ namespace {
 
       // Create a pointer to the first element of the array.
       Value *elemPtr = builder.CreateGEP(gep->getPointerOperand(), builder.getInt32(0));
-      errs() << "elemPtr: " << *elemPtr << '\n';
       shouldBeInBounds(elemPtr);
 
       // Store pointer to array in stack space created by alloca.
