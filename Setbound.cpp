@@ -122,20 +122,15 @@ Setbound::getValueByteSize(Value *value)
   /* Discard pointer casts as they are(?) irrelevant for this analysis. */
   value = value->stripPointerCasts();
 
-  const AllocaInst *allocaInst = dyn_cast<AllocaInst>(value);
-  const GetElementPtrInst *elemPtrInst = dyn_cast<GetElementPtrInst>(value);
-  const ConstantExpr *consExpr = dyn_cast<ConstantExpr>(value);
-  const GlobalVariable *globalVar = dyn_cast<GlobalVariable>(value);
-
   Value *numbytes = nullptr;
-  if (allocaInst) { /* pointer to stack-based scalar */
+  if (const auto allocaInst = dyn_cast<AllocaInst>(value)) { /* pointer to stack-based scalar */
     auto allocated = allocaInst->getAllocatedType();
     numbytes = xsizeof(allocated);
-  } else if (elemPtrInst) { /* pointer to stack-based buffer */
+  } else if (const auto elemPtrInst = dyn_cast<GetElementPtrInst>(value)) { /* pointer to stack-based buffer */
     auto sourceElem = elemPtrInst->getSourceElementType();
 
     numbytes = xsizeof(sourceElem);
-  } else if (consExpr) { /* pointer to constant/global buffer */
+  } else if (const auto consExpr = dyn_cast<ConstantExpr>(value)) { /* pointer to constant/global buffer */
     if (consExpr->getOpcode() != Instruction::GetElementPtr)
       return nullptr;
 
@@ -144,9 +139,8 @@ Setbound::getValueByteSize(Value *value)
     if (!ptr)
       return nullptr;
 
-    Type *source = ptr->getElementType();
-    numbytes = xsizeof(source);
-  } else if (globalVar) { /* pointer to global scalar */
+    numbytes = xsizeof(ptr->getElementType());
+  } else if (const auto globalVar = dyn_cast<GlobalVariable>(value)) { /* pointer to global scalar */
     PointerType *ptr = dyn_cast<PointerType>(globalVar->getType());
     if (!ptr)
       return nullptr;
