@@ -21,8 +21,6 @@
  */
 struct Setbound : public llvm::FunctionPass {
   static char ID; // Pass identification, replacement for typeid
-
-  llvm::LLVMContext context;
   llvm::DataLayout *DL;
 
   Setbound() : FunctionPass(ID) {}
