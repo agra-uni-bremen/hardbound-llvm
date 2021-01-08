@@ -11,6 +11,8 @@ if(WIN32 OR CYGWIN)
 endif()
 
 add_llvm_library( LLVMHardbound MODULE BUILDTREE_ONLY
+  Array2Pointer.cpp
+  Setbound.cpp
   Hardbound.cpp
 
   DEPENDS
