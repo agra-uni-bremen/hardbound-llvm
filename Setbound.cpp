@@ -12,6 +12,8 @@
 #define SETBOUND_CONS \
   "r,r,r,~{x17},~{x10},~{x11},~{x12}"
 
+using namespace llvm;
+
 bool
 Setbound::runOnFunction(Function &F)
 {

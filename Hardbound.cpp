@@ -3,6 +3,8 @@
 
 #define DEBUG_TYPE "hardbound"
 
+using namespace llvm;
+
 char Array2Pointer::ID = 0;
 static RegisterPass<Array2Pointer> A("array2pointer", "hardbound array2pointer compiler pass");
 

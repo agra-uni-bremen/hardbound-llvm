@@ -11,8 +11,6 @@
 #include "llvm/Pass.h"
 #include "llvm/Support/raw_ostream.h"
 
-using namespace llvm;
-
 /**
  * Array2Pointer compiler pass.
  *
@@ -22,24 +20,24 @@ using namespace llvm;
  * spatial memory safety violations. The rewrite peformed by the
  * Array2Pointer pass should not affect observable program behaviour.
  */
-struct Array2Pointer : public FunctionPass {
+struct Array2Pointer : public llvm::FunctionPass {
   static char ID; // Pass identification, replacement for typeid
-  DataLayout *DL;
+  llvm::DataLayout *DL;
 
   Array2Pointer() : FunctionPass(ID) {}
 
-  bool runOnFunction(Function &F) override;
+  bool runOnFunction(llvm::Function &F) override;
 
   private:
 
-  void shouldBeInBounds(Value *value);
-  Value *getElemPtrIndex(GetElementPtrInst *instr);
+  void shouldBeInBounds(llvm::Value *value);
+  llvm::Value *getElemPtrIndex(llvm::GetElementPtrInst *instr);
 
-  Value *getArrayPointer(IRBuilder<> &builder, Value *array, ArrayType *arrayTy, Value *index);
-  LoadInst *transformArrayAccess(IRBuilder<> &builder, GetElementPtrInst *gep, ArrayType *arrayTy);
+  llvm::Value *getArrayPointer(llvm::IRBuilder<> &builder, llvm::Value *array, llvm::ArrayType *arrayTy, llvm::Value *index);
+  llvm::LoadInst *transformArrayAccess(llvm::IRBuilder<> &builder, llvm::GetElementPtrInst *gep, llvm::ArrayType *arrayTy);
 
-  Instruction *runOnLoadInstr(IRBuilder<> &builder, LoadInst *loadInst);
-  Instruction *runOnCallInst(IRBuilder<> &builder, CallInst *callInst);
+  llvm::Instruction *runOnLoadInstr(llvm::IRBuilder<> &builder, llvm::LoadInst *loadInst);
+  llvm::Instruction *runOnCallInst(llvm::IRBuilder<> &builder, llvm::CallInst *callInst);
 };
 
 #endif

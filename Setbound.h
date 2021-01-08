@@ -11,8 +11,6 @@
 #include "llvm/Pass.h"
 #include "llvm/Support/raw_ostream.h"
 
-using namespace llvm;
-
 /**
  * Setbound compiler pass.
  *
@@ -21,27 +19,27 @@ using namespace llvm;
  * This allows bounds-checking to be peformed in the Hardware as
  * described in the original Hardbound paper.
  */
-struct Setbound : public FunctionPass {
+struct Setbound : public llvm::FunctionPass {
   static char ID; // Pass identification, replacement for typeid
 
-  LLVMContext context;
-  DataLayout *DL;
+  llvm::LLVMContext context;
+  llvm::DataLayout *DL;
 
   Setbound() : FunctionPass(ID) {}
-  bool runOnFunction(Function &F) override;
+  bool runOnFunction(llvm::Function &F) override;
 
 private:
 
-  Instruction *buildSetbound(IRBuilder<> &builder, Value *pointer, Value *base, Value *numbytes);
-  Instruction *runOnStoreInstr(IRBuilder<> &builder, StoreInst &storeInst);
+  llvm::Instruction *buildSetbound(llvm::IRBuilder<> &builder, llvm::Value *pointer, llvm::Value *base, llvm::Value *numbytes);
+  llvm::Instruction *runOnStoreInstr(llvm::IRBuilder<> &builder, llvm::StoreInst &storeInst);
 
-  Value *xsizeof(IRBuilder<> &builder, Type *type);
-  Value *getArraySize(IRBuilder<> &builder, Type *type);
+  llvm::Value *xsizeof(llvm::IRBuilder<> &builder, llvm::Type *type);
+  llvm::Value *getArraySize(llvm::IRBuilder<> &builder, llvm::Type *type);
 
-  Value *baseOffset(IRBuilder<> &builder, Value *offset, Type *source);
-  Value *baseOffset(IRBuilder<> &builder, const GetElementPtrInst *instr);
+  llvm::Value *baseOffset(llvm::IRBuilder<> &builder, llvm::Value *offset, llvm::Type *source);
+  llvm::Value *baseOffset(llvm::IRBuilder<> &builder, const llvm::GetElementPtrInst *instr);
 
-  Value *getValueByteSize(IRBuilder<> &builder, Value *value);
+  llvm::Value *getValueByteSize(llvm::IRBuilder<> &builder, llvm::Value *value);
 };
 
 #endif

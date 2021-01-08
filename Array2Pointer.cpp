@@ -1,5 +1,7 @@
 #include "Array2Pointer.h"
 
+using namespace llvm;
+
 bool
 Array2Pointer::runOnFunction(Function &F)
 {
