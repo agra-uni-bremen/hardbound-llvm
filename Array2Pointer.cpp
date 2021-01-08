@@ -137,7 +137,7 @@ Array2Pointer::getArrayPointer(ConstantExpr *consExpr)
 }
 
 Value *
-Array2Pointer::value2arrayPtr(Value *v)
+Array2Pointer::value2array(Value *v)
 {
   if (ConstantExpr *consExpr = dyn_cast<ConstantExpr>(v)) {
     return getArrayPointer(consExpr);
@@ -152,7 +152,7 @@ Instruction *
 Array2Pointer::runOnStoreInstr(StoreInst *storeInst)
 {
   Value *value = storeInst->getValueOperand();
-  Value *arrayPointer = value2arrayPtr(value);
+  Value *arrayPointer = value2array(value);
   if (!arrayPointer)
     return nullptr;
 
@@ -168,7 +168,7 @@ Instruction *
 Array2Pointer::runOnLoadInstr(LoadInst *loadInst)
 {
   Value *pointer = loadInst->getPointerOperand();
-  Value *arrayPointer = value2arrayPtr(pointer);
+  Value *arrayPointer = value2array(pointer);
   if (!arrayPointer)
     return nullptr;
 

@@ -39,7 +39,8 @@ private:
   llvm::Value *getArrayPointer(llvm::GetElementPtrInst *gep);
   llvm::Value *getArrayPointer(llvm::ConstantExpr *consExpr);
 
-  llvm::Value *value2arrayPtr(llvm::Value *v);
+  /* Calls the correct getArrayPointer() function for the given value */
+  llvm::Value *value2array(llvm::Value *v);
 
   llvm::Instruction *runOnStoreInstr(llvm::StoreInst *StoreInst);
   llvm::Instruction *runOnLoadInstr(llvm::LoadInst *loadInst);
