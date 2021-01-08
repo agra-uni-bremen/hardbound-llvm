@@ -163,10 +163,11 @@ Setbound::getValueByteSize(IRBuilder<> &builder, Value *value)
     auto sourceElem = elemPtrInst->getSourceElementType();
 
     numbytes = xsizeof(builder, sourceElem);
-    Value *offset = baseOffset(builder, elemPtrInst);
+    assert(numbytes);
 
-    assert(offset && numbytes);
-    numbytes = builder.CreateSub(numbytes, offset);
+    Value *offset = baseOffset(builder, elemPtrInst);
+    if (offset)
+      numbytes = builder.CreateSub(numbytes, offset);
   } else if (consExpr) { /* pointer to constant/global buffer */
     if (consExpr->getOpcode() != Instruction::GetElementPtr)
       return nullptr;
