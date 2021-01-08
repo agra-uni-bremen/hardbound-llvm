@@ -107,22 +107,43 @@ Array2Pointer::getArrayPointer(IRBuilder<> &builder, GetElementPtrInst *gep, Arr
 }
 
 Value *
-Array2Pointer::value2arrayPtr(IRBuilder<> &builder, Value *v)
+Array2Pointer::getArrayPointer(IRBuilder<> &builder, ConstantExpr *consExpr)
 {
-  GetElementPtrInst *elemPtrInst = dyn_cast<GetElementPtrInst>(v);
-  if (!elemPtrInst)
+  if (consExpr->getOpcode() != Instruction::GetElementPtr)
     return nullptr;
 
-  Type *opType = elemPtrInst->getPointerOperandType();
-  PointerType *ptr = dyn_cast<PointerType>(opType);
+  Value *arrayPtr  = consExpr->getOperand(0);
+  PointerType *ptr = dyn_cast<PointerType>(arrayPtr->getType());
   if (!ptr)
     return nullptr;
 
-  ArrayType *array = dyn_cast<ArrayType>(ptr->getElementType());
-  if (!array)
+  ArrayType *arrayTy = dyn_cast<ArrayType>(ptr->getElementType());
+  if (!arrayTy)
     return nullptr;
 
-  return getArrayPointer(builder, elemPtrInst, array);
+  Value *index = consExpr->getOperand(2);
+  return getArrayPointer(builder, arrayPtr, arrayTy, index);
+}
+
+Value *
+Array2Pointer::value2arrayPtr(IRBuilder<> &builder, Value *v)
+{
+  if (ConstantExpr *consExpr = dyn_cast<ConstantExpr>(v)) {
+    return getArrayPointer(builder, consExpr);
+  } else if (GetElementPtrInst *elemPtrInst = dyn_cast<GetElementPtrInst>(v)) {
+    Type *opType = elemPtrInst->getPointerOperandType();
+    PointerType *ptr = dyn_cast<PointerType>(opType);
+    if (!ptr)
+      return nullptr;
+
+    ArrayType *array = dyn_cast<ArrayType>(ptr->getElementType());
+    if (!array)
+      return nullptr;
+
+    return getArrayPointer(builder, elemPtrInst, array);
+  }
+
+  return nullptr;
 }
 
 Instruction *
@@ -163,27 +184,15 @@ Array2Pointer::runOnCallInst(IRBuilder<> &builder, CallInst *callInst)
   for (size_t i = 0; i < callInst->arg_size(); i++) {
     Value *arg = callInst->getArgOperand(i);
 
-    const ConstantExpr *consExpr = dyn_cast<ConstantExpr>(arg);
+    ConstantExpr *consExpr = dyn_cast<ConstantExpr>(arg);
     if (!consExpr)
       return nullptr;
-    if (consExpr->getOpcode() != Instruction::GetElementPtr)
-      return nullptr;
 
-    Value *arrayPtr  = consExpr->getOperand(0);
-    PointerType *ptr = dyn_cast<PointerType>(arrayPtr->getType());
+    Value *ptr = getArrayPointer(builder, consExpr);
     if (!ptr)
       return nullptr;
 
-    ArrayType *arrayTy = dyn_cast<ArrayType>(ptr->getElementType());
-    if (!arrayTy)
-      return nullptr;
-
-    Value *index = consExpr->getOperand(2);
-    Value *transformed = getArrayPointer(builder, arrayPtr, arrayTy, index);
-    if (!transformed)
-      return nullptr;
-
-    callInst->setArgOperand(i, transformed);
+    callInst->setArgOperand(i, ptr);
     modified = true;
   }
 
