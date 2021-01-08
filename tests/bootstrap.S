@@ -5,7 +5,7 @@ ecall
 .endm
 
 irq_handler:
-	/* Check if exception code is a load access fault */
+	/* Check mcause for hardbound exception */
 	csrr t0, mcause
 	li t1, 24 /* hardbound exception */
 	beq t0, t1, succ
