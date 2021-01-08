@@ -36,9 +36,6 @@ private:
   llvm::Value *xsizeof(llvm::IRBuilder<> &builder, llvm::Type *type);
   llvm::Value *getArraySize(llvm::IRBuilder<> &builder, llvm::Type *type);
 
-  llvm::Value *baseOffset(llvm::IRBuilder<> &builder, llvm::Value *offset, llvm::Type *source);
-  llvm::Value *baseOffset(llvm::IRBuilder<> &builder, const llvm::GetElementPtrInst *instr);
-
   llvm::Value *getValueByteSize(llvm::IRBuilder<> &builder, llvm::Value *value);
 };
 

@@ -116,35 +116,6 @@ Setbound::getArraySize(IRBuilder<> &builder, Type *type)
 }
 
 Value *
-Setbound::baseOffset(IRBuilder<> &builder, Value *offset, Type *source)
-{
-  if (!source->isArrayTy())
-    llvm_unreachable("getelementptr on non array type");
-
-  auto elemType = source->getArrayElementType();
-  auto elemSize = xsizeof(builder, elemType);
-
-  return builder.CreateMul(offset, elemSize);
-}
-
-Value *
-Setbound::baseOffset(IRBuilder<> &builder, const GetElementPtrInst *instr)
-{
-  /* From the LLVM Language Reference Manual:
-   *   […] the second index indexes a value of the type pointed to.
-   */
-  auto indices = instr->getNumIndices();
-  if (indices < 2)
-    return nullptr;
-
-  auto it = std::next(instr->idx_begin(), 1);
-  Value *offset = *it;
-
-  auto source = instr->getSourceElementType();
-  return baseOffset(builder, offset, source);
-}
-
-Value *
 Setbound::getValueByteSize(IRBuilder<> &builder, Value *value)
 {
   /* Discard pointer casts as they are(?) irrelevant for this analysis. */
@@ -163,11 +134,6 @@ Setbound::getValueByteSize(IRBuilder<> &builder, Value *value)
     auto sourceElem = elemPtrInst->getSourceElementType();
 
     numbytes = xsizeof(builder, sourceElem);
-    assert(numbytes);
-
-    Value *offset = baseOffset(builder, elemPtrInst);
-    if (offset)
-      numbytes = builder.CreateSub(numbytes, offset);
   } else if (consExpr) { /* pointer to constant/global buffer */
     if (consExpr->getOpcode() != Instruction::GetElementPtr)
       return nullptr;
@@ -177,12 +143,8 @@ Setbound::getValueByteSize(IRBuilder<> &builder, Value *value)
     if (!ptr)
       return nullptr;
 
-    /* the second index indexes a value of the type pointed to */
-    Value *index = consExpr->getOperand(2);
     Type *source = ptr->getElementType();
-
-    Value *offset = baseOffset(builder, index, source);
-    numbytes = builder.CreateSub(xsizeof(builder, source), offset);
+    numbytes = xsizeof(builder, source);
   } else if (globalVar) { /* pointer to global scalar */
     PointerType *ptr = dyn_cast<PointerType>(globalVar->getType());
     if (!ptr)
