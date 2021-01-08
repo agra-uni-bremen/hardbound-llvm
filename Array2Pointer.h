@@ -22,6 +22,8 @@
  */
 struct Array2Pointer : public llvm::FunctionPass {
   static char ID; // Pass identification, replacement for typeid
+
+  llvm::IRBuilder<> *builder;
   llvm::DataLayout *DL;
 
   Array2Pointer() : FunctionPass(ID) {}
@@ -33,15 +35,15 @@ private:
   void shouldBeInBounds(llvm::Value *value);
   llvm::Value *getElemPtrIndex(llvm::GetElementPtrInst *instr);
 
-  llvm::Value *getArrayPointer(llvm::IRBuilder<> &builder, llvm::Value *array, llvm::ArrayType *arrayTy, llvm::Value *index);
-  llvm::Value *getArrayPointer(llvm::IRBuilder<> &builder, llvm::GetElementPtrInst *gep);
-  llvm::Value *getArrayPointer(llvm::IRBuilder<> &builder, llvm::ConstantExpr *consExpr);
+  llvm::Value *getArrayPointer(llvm::Value *array, llvm::ArrayType *arrayTy, llvm::Value *index);
+  llvm::Value *getArrayPointer(llvm::GetElementPtrInst *gep);
+  llvm::Value *getArrayPointer(llvm::ConstantExpr *consExpr);
 
-  llvm::Value *value2arrayPtr(llvm::IRBuilder<> &builder, llvm::Value *v);
+  llvm::Value *value2arrayPtr(llvm::Value *v);
 
-  llvm::Instruction *runOnStoreInstr(llvm::IRBuilder<> &builder, llvm::StoreInst *StoreInst);
-  llvm::Instruction *runOnLoadInstr(llvm::IRBuilder<> &builder, llvm::LoadInst *loadInst);
-  llvm::Instruction *runOnCallInst(llvm::IRBuilder<> &builder, llvm::CallInst *callInst);
+  llvm::Instruction *runOnStoreInstr(llvm::StoreInst *StoreInst);
+  llvm::Instruction *runOnLoadInstr(llvm::LoadInst *loadInst);
+  llvm::Instruction *runOnCallInst(llvm::CallInst *callInst);
 };
 
 #endif
