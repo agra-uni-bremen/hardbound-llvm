@@ -28,13 +28,13 @@ struct Array2Pointer : public llvm::FunctionPass {
 
   bool runOnFunction(llvm::Function &F) override;
 
-  private:
+private:
 
   void shouldBeInBounds(llvm::Value *value);
   llvm::Value *getElemPtrIndex(llvm::GetElementPtrInst *instr);
 
   llvm::Value *getArrayPointer(llvm::IRBuilder<> &builder, llvm::Value *array, llvm::ArrayType *arrayTy, llvm::Value *index);
-  llvm::Value *getArrayPointer(llvm::IRBuilder<> &builder, llvm::GetElementPtrInst *gep, llvm::ArrayType *arrayTy);
+  llvm::Value *getArrayPointer(llvm::IRBuilder<> &builder, llvm::GetElementPtrInst *gep);
   llvm::Value *getArrayPointer(llvm::IRBuilder<> &builder, llvm::ConstantExpr *consExpr);
 
   llvm::Value *value2arrayPtr(llvm::IRBuilder<> &builder, llvm::Value *v);

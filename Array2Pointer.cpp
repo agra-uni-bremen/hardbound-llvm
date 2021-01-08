@@ -100,10 +100,19 @@ Array2Pointer::getArrayPointer(IRBuilder<> &builder, Value *array, ArrayType *ar
 }
 
 Value *
-Array2Pointer::getArrayPointer(IRBuilder<> &builder, GetElementPtrInst *gep, ArrayType *arrayTy)
+Array2Pointer::getArrayPointer(IRBuilder<> &builder, GetElementPtrInst *gep)
 {
+  Type *opType = gep->getPointerOperandType();
+  PointerType *ptr = dyn_cast<PointerType>(opType);
+  if (!ptr)
+    return nullptr;
+
+  ArrayType *array = dyn_cast<ArrayType>(ptr->getElementType());
+  if (!array)
+    return nullptr;
+
   Value *index = getElemPtrIndex(gep);
-  return getArrayPointer(builder, gep->getPointerOperand(), arrayTy, index);
+  return getArrayPointer(builder, gep->getPointerOperand(), array, index);
 }
 
 Value *
@@ -131,19 +140,10 @@ Array2Pointer::value2arrayPtr(IRBuilder<> &builder, Value *v)
   if (ConstantExpr *consExpr = dyn_cast<ConstantExpr>(v)) {
     return getArrayPointer(builder, consExpr);
   } else if (GetElementPtrInst *elemPtrInst = dyn_cast<GetElementPtrInst>(v)) {
-    Type *opType = elemPtrInst->getPointerOperandType();
-    PointerType *ptr = dyn_cast<PointerType>(opType);
-    if (!ptr)
-      return nullptr;
-
-    ArrayType *array = dyn_cast<ArrayType>(ptr->getElementType());
-    if (!array)
-      return nullptr;
-
-    return getArrayPointer(builder, elemPtrInst, array);
+    return getArrayPointer(builder, elemPtrInst);
+  } else {
+    return nullptr;
   }
-
-  return nullptr;
 }
 
 Instruction *
