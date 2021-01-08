@@ -17,14 +17,15 @@ Array2Pointer::runOnFunction(Function &F)
 
     for (auto instrIt = bb.begin(); instrIt != bb.end(); instrIt++) {
       Instruction *newInstr = nullptr;
-      if (LoadInst *loadInst = dyn_cast<LoadInst>(instrIt)) {
-        IRBuilder<> builder = IRBuilder<>(loadInst);
+
+      Instruction *instr = cast<Instruction>(instrIt);
+      IRBuilder<> builder = IRBuilder<>(instr);
+
+      if (LoadInst *loadInst = dyn_cast<LoadInst>(instr)) {
         newInstr = runOnLoadInstr(builder, loadInst);
-      } else if (StoreInst *storeInst = dyn_cast<StoreInst>(instrIt)) {
-        IRBuilder<> builder = IRBuilder<>(storeInst);
+      } else if (StoreInst *storeInst = dyn_cast<StoreInst>(instr)) {
         newInstr = runOnStoreInstr(builder, storeInst);
-      } else if (CallInst *callInst = dyn_cast<CallInst>(instrIt)) {
-        IRBuilder<> builder = IRBuilder<>(callInst);
+      } else if (CallInst *callInst = dyn_cast<CallInst>(instr)) {
         newInstr = runOnCallInst(builder, callInst);
       }
 
