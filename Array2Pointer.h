@@ -34,8 +34,9 @@ struct Array2Pointer : public llvm::FunctionPass {
   llvm::Value *getElemPtrIndex(llvm::GetElementPtrInst *instr);
 
   llvm::Value *getArrayPointer(llvm::IRBuilder<> &builder, llvm::Value *array, llvm::ArrayType *arrayTy, llvm::Value *index);
-  llvm::LoadInst *transformArrayAccess(llvm::IRBuilder<> &builder, llvm::GetElementPtrInst *gep, llvm::ArrayType *arrayTy);
+  llvm::Value *getArrayPointer(llvm::IRBuilder<> &builder, llvm::GetElementPtrInst *gep, llvm::ArrayType *arrayTy);
 
+  llvm::Instruction *runOnStoreInstr(llvm::IRBuilder<> &builder, llvm::StoreInst *StoreInst);
   llvm::Instruction *runOnLoadInstr(llvm::IRBuilder<> &builder, llvm::LoadInst *loadInst);
   llvm::Instruction *runOnCallInst(llvm::IRBuilder<> &builder, llvm::CallInst *callInst);
 };

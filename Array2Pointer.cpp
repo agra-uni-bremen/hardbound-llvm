@@ -20,6 +20,9 @@ Array2Pointer::runOnFunction(Function &F)
       if (LoadInst *loadInst = dyn_cast<LoadInst>(instrIt)) {
         IRBuilder<> builder = IRBuilder<>(loadInst);
         newInstr = runOnLoadInstr(builder, loadInst);
+      } else if (StoreInst *storeInst = dyn_cast<StoreInst>(instrIt)) {
+        IRBuilder<> builder = IRBuilder<>(storeInst);
+        newInstr = runOnStoreInstr(builder, storeInst);
       } else if (CallInst *callInst = dyn_cast<CallInst>(instrIt)) {
         IRBuilder<> builder = IRBuilder<>(callInst);
         newInstr = runOnCallInst(builder, callInst);
@@ -96,15 +99,43 @@ Array2Pointer::getArrayPointer(IRBuilder<> &builder, Value *array, ArrayType *ar
   return elem;
 }
 
-LoadInst *
-Array2Pointer::transformArrayAccess(IRBuilder<> &builder, GetElementPtrInst *gep, ArrayType *arrayTy)
+Value *
+Array2Pointer::getArrayPointer(IRBuilder<> &builder, GetElementPtrInst *gep, ArrayType *arrayTy)
 {
   Value *index = getElemPtrIndex(gep);
-  Value *ptr = getArrayPointer(builder, gep->getPointerOperand(), arrayTy, index);
+  return getArrayPointer(builder, gep->getPointerOperand(), arrayTy, index);
+}
 
-  // Load the value returned by the created getelementptr instruction.
-  auto finalLoad = builder.CreateLoad(arrayTy->getElementType(), ptr);
-  return finalLoad;
+Instruction *
+Array2Pointer::runOnStoreInstr(IRBuilder<> &builder, StoreInst *storeInst)
+{
+  Value *value = storeInst->getValueOperand();
+  GetElementPtrInst *elemPtrInst = dyn_cast<GetElementPtrInst>(value);
+  if (!elemPtrInst)
+    return nullptr;
+
+  Type *opType = elemPtrInst->getPointerOperandType();
+  PointerType *ptr = dyn_cast<PointerType>(opType);
+  if (!ptr)
+    return nullptr;
+
+  ArrayType *array = dyn_cast<ArrayType>(ptr->getElementType());
+  if (!array)
+    return nullptr;
+
+  Value *newPtr = getArrayPointer(builder, elemPtrInst, array);
+  if (!newPtr)
+    return nullptr;
+
+  auto newStore = builder.CreateStore(newPtr,
+      storeInst->getPointerOperand(),
+      storeInst->isVolatile());
+  newStore->setAlignment(storeInst->getAlign());
+
+  errs() << "old store: " << *storeInst << '\n';
+  errs() << "new store: " << *newStore << '\n';
+
+  return newStore;
 }
 
 Instruction *
@@ -124,7 +155,11 @@ Array2Pointer::runOnLoadInstr(IRBuilder<> &builder, LoadInst *loadInst)
   if (!array)
     return nullptr;
 
-  auto newLoad = transformArrayAccess(builder, elemPtrInst, array);
+  Value *newPtr = getArrayPointer(builder, elemPtrInst, array);
+  if (!newPtr)
+    return nullptr;
+
+  auto newLoad = builder.CreateLoad(array->getElementType(), newPtr);
   newLoad->setAlignment(loadInst->getAlign());
 
   return newLoad;
