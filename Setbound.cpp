@@ -28,12 +28,13 @@ Setbound::runOnFunction(Function &F)
     BasicBlock &bb = *it;
 
     for (auto instrIt = bb.begin(); instrIt != bb.end(); instrIt++) {
-      Instruction &instr = *instrIt;
-      IRBuilder<> builder = IRBuilder<>(&instr);
+      Instruction *instr = cast<Instruction>(instrIt);
 
-      StoreInst *storeInst = dyn_cast<StoreInst>(instrIt);
-      if (storeInst) {
-        if (runOnStoreInstr(builder, *storeInst))
+      auto instrBuilder = IRBuilder<>(instr);
+      builder = &instrBuilder;
+
+      if (StoreInst *storeInst = dyn_cast<StoreInst>(instr)) {
+        if (runOnStoreInstr(*storeInst))
           modified = true;
       }
     }
@@ -43,24 +44,24 @@ Setbound::runOnFunction(Function &F)
 }
 
 Instruction *
-Setbound::buildSetbound(IRBuilder<> &builder, Value *pointer, Value *base, Value *numbytes)
+Setbound::buildSetbound(Value *pointer, Value *base, Value *numbytes)
 {
-  auto i32 = builder.getInt32Ty();
+  auto i32 = builder->getInt32Ty();
 
   InlineAsm *Asm = InlineAsm::get(
-      FunctionType::get(builder.getVoidTy(), {i32, i32, i32}, false),
+      FunctionType::get(builder->getVoidTy(), {i32, i32, i32}, false),
       StringRef(SETBOUND_ASM),
       StringRef(SETBOUND_CONS),
       true);
 
-  auto ptrInt = builder.CreatePtrToInt(pointer, i32);
-  auto baseInt = builder.CreatePtrToInt(base, i32);
+  auto ptrInt = builder->CreatePtrToInt(pointer, i32);
+  auto baseInt = builder->CreatePtrToInt(base, i32);
 
-  return builder.CreateCall(Asm, {ptrInt, baseInt, numbytes}, "");
+  return builder->CreateCall(Asm, {ptrInt, baseInt, numbytes}, "");
 }
 
 Instruction *
-Setbound::runOnStoreInstr(IRBuilder<> &builder, StoreInst &storeInst)
+Setbound::runOnStoreInstr(StoreInst &storeInst)
 {
   Value *value   = storeInst.getValueOperand();
   Value *pointer = storeInst.getPointerOperand();
@@ -72,51 +73,51 @@ Setbound::runOnStoreInstr(IRBuilder<> &builder, StoreInst &storeInst)
   errs() << "\t\t" << "VALUE: " << *value << '\n';
   errs() << "\t\t" << "POINTER: " << *pointer << "\n\n";
 
-  Value *numbytes = getValueByteSize(builder, value);
+  Value *numbytes = getValueByteSize(value);
   if (!numbytes)
     return nullptr;
 
-  Instruction *setboundInstr = buildSetbound(builder, pointer, value, numbytes);
+  Instruction *setboundInstr = buildSetbound(pointer, value, numbytes);
   errs() << "\n\n" << "GENERATED: " << *setboundInstr << '\n';
 
   return setboundInstr;
 }
 
 Value *
-Setbound::xsizeof(IRBuilder<> &builder, Type *type)
+Setbound::xsizeof(Type *type)
 {
   if (type->isArrayTy())
-    return getArraySize(builder, type);
+    return getArraySize(type);
 
   StructType *tstruct = dyn_cast<StructType>(type);
   if (tstruct) {
     const StructLayout *sl = DL->getStructLayout(tstruct);
-    return builder.getInt32(sl->getSizeInBytes());
+    return builder->getInt32(sl->getSizeInBytes());
   }
 
   auto size = type->getScalarSizeInBits() / CHAR_BIT;
-  return builder.getInt32(size);
+  return builder->getInt32(size);
 }
 
 Value *
-Setbound::getArraySize(IRBuilder<> &builder, Type *type)
+Setbound::getArraySize(Type *type)
 {
   if (!type->isArrayTy())
     return nullptr;
 
   auto elems = type->getArrayNumElements();
-  auto elem_size = xsizeof(builder, type->getArrayElementType());
+  auto elem_size = xsizeof(type->getArrayElementType());
 
   auto elem_size_const = dyn_cast<llvm::ConstantInt>(elem_size);
   if (!elem_size)
     llvm_unreachable("elem_size is not constant");
 
   size_t total_size = elems * elem_size_const->getZExtValue();
-  return builder.getInt32(total_size);
+  return builder->getInt32(total_size);
 }
 
 Value *
-Setbound::getValueByteSize(IRBuilder<> &builder, Value *value)
+Setbound::getValueByteSize(Value *value)
 {
   /* Discard pointer casts as they are(?) irrelevant for this analysis. */
   value = value->stripPointerCasts();
@@ -129,11 +130,11 @@ Setbound::getValueByteSize(IRBuilder<> &builder, Value *value)
   Value *numbytes = nullptr;
   if (allocaInst) { /* pointer to stack-based scalar */
     auto allocated = allocaInst->getAllocatedType();
-    numbytes = xsizeof(builder, allocated);
+    numbytes = xsizeof(allocated);
   } else if (elemPtrInst) { /* pointer to stack-based buffer */
     auto sourceElem = elemPtrInst->getSourceElementType();
 
-    numbytes = xsizeof(builder, sourceElem);
+    numbytes = xsizeof(sourceElem);
   } else if (consExpr) { /* pointer to constant/global buffer */
     if (consExpr->getOpcode() != Instruction::GetElementPtr)
       return nullptr;
@@ -144,13 +145,13 @@ Setbound::getValueByteSize(IRBuilder<> &builder, Value *value)
       return nullptr;
 
     Type *source = ptr->getElementType();
-    numbytes = xsizeof(builder, source);
+    numbytes = xsizeof(source);
   } else if (globalVar) { /* pointer to global scalar */
     PointerType *ptr = dyn_cast<PointerType>(globalVar->getType());
     if (!ptr)
       return nullptr;
 
-    numbytes = xsizeof(builder, ptr->getElementType());
+    numbytes = xsizeof(ptr->getElementType());
   }
 
   return numbytes;

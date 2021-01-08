@@ -21,6 +21,8 @@
  */
 struct Setbound : public llvm::FunctionPass {
   static char ID; // Pass identification, replacement for typeid
+
+  llvm::IRBuilder<> *builder;
   llvm::DataLayout *DL;
 
   Setbound() : FunctionPass(ID) {}
@@ -28,13 +30,12 @@ struct Setbound : public llvm::FunctionPass {
 
 private:
 
-  llvm::Instruction *buildSetbound(llvm::IRBuilder<> &builder, llvm::Value *pointer, llvm::Value *base, llvm::Value *numbytes);
-  llvm::Instruction *runOnStoreInstr(llvm::IRBuilder<> &builder, llvm::StoreInst &storeInst);
+  llvm::Instruction *buildSetbound(llvm::Value *pointer, llvm::Value *base, llvm::Value *numbytes);
+  llvm::Instruction *runOnStoreInstr(llvm::StoreInst &storeInst);
 
-  llvm::Value *xsizeof(llvm::IRBuilder<> &builder, llvm::Type *type);
-  llvm::Value *getArraySize(llvm::IRBuilder<> &builder, llvm::Type *type);
-
-  llvm::Value *getValueByteSize(llvm::IRBuilder<> &builder, llvm::Value *value);
+  llvm::Value *xsizeof(llvm::Type *type);
+  llvm::Value *getArraySize(llvm::Type *type);
+  llvm::Value *getValueByteSize(llvm::Value *value);
 };
 
 #endif
