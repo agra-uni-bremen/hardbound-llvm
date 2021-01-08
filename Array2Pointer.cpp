@@ -106,11 +106,10 @@ Array2Pointer::getArrayPointer(IRBuilder<> &builder, GetElementPtrInst *gep, Arr
   return getArrayPointer(builder, gep->getPointerOperand(), arrayTy, index);
 }
 
-Instruction *
-Array2Pointer::runOnStoreInstr(IRBuilder<> &builder, StoreInst *storeInst)
+Value *
+Array2Pointer::value2arrayPtr(IRBuilder<> &builder, Value *v)
 {
-  Value *value = storeInst->getValueOperand();
-  GetElementPtrInst *elemPtrInst = dyn_cast<GetElementPtrInst>(value);
+  GetElementPtrInst *elemPtrInst = dyn_cast<GetElementPtrInst>(v);
   if (!elemPtrInst)
     return nullptr;
 
@@ -123,17 +122,21 @@ Array2Pointer::runOnStoreInstr(IRBuilder<> &builder, StoreInst *storeInst)
   if (!array)
     return nullptr;
 
-  Value *newPtr = getArrayPointer(builder, elemPtrInst, array);
-  if (!newPtr)
+  return getArrayPointer(builder, elemPtrInst, array);
+}
+
+Instruction *
+Array2Pointer::runOnStoreInstr(IRBuilder<> &builder, StoreInst *storeInst)
+{
+  Value *value = storeInst->getValueOperand();
+  Value *arrayPointer = value2arrayPtr(builder, value);
+  if (!arrayPointer)
     return nullptr;
 
-  auto newStore = builder.CreateStore(newPtr,
+  auto newStore = builder.CreateStore(arrayPointer,
       storeInst->getPointerOperand(),
       storeInst->isVolatile());
   newStore->setAlignment(storeInst->getAlign());
-
-  errs() << "old store: " << *storeInst << '\n';
-  errs() << "new store: " << *newStore << '\n';
 
   return newStore;
 }
@@ -142,24 +145,11 @@ Instruction *
 Array2Pointer::runOnLoadInstr(IRBuilder<> &builder, LoadInst *loadInst)
 {
   Value *pointer = loadInst->getPointerOperand();
-  GetElementPtrInst *elemPtrInst = dyn_cast<GetElementPtrInst>(pointer);
-  if (!elemPtrInst)
+  Value *arrayPointer = value2arrayPtr(builder, pointer);
+  if (!arrayPointer)
     return nullptr;
 
-  Type *opType = elemPtrInst->getPointerOperandType();
-  PointerType *ptr = dyn_cast<PointerType>(opType);
-  if (!ptr)
-    return nullptr;
-
-  ArrayType *array = dyn_cast<ArrayType>(ptr->getElementType());
-  if (!array)
-    return nullptr;
-
-  Value *newPtr = getArrayPointer(builder, elemPtrInst, array);
-  if (!newPtr)
-    return nullptr;
-
-  auto newLoad = builder.CreateLoad(array->getElementType(), newPtr);
+  auto newLoad = builder.CreateLoad(loadInst->getType(), arrayPointer);
   newLoad->setAlignment(loadInst->getAlign());
 
   return newLoad;
