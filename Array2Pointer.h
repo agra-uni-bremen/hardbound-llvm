@@ -45,6 +45,7 @@ private:
   llvm::Instruction *runOnStoreInstr(llvm::StoreInst *StoreInst);
   llvm::Instruction *runOnLoadInstr(llvm::LoadInst *loadInst);
   llvm::Instruction *runOnCallInst(llvm::CallInst *callInst);
+  llvm::Instruction *runOnReturnInst(llvm::ReturnInst *retInst);
 };
 
 #endif

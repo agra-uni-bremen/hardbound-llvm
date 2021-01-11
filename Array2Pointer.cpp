@@ -22,12 +22,17 @@ Array2Pointer::runOnFunction(Function &F)
       auto instrBuilder = IRBuilder<>(instr);
       builder = &instrBuilder;
 
+      /* TODO: Is there any way to get rid of constant expressions in
+       * order to simplify this pass? callInst and retInst are only
+       * handeled because they may contain ConstantExprs */
       if (LoadInst *loadInst = dyn_cast<LoadInst>(instr)) {
         newInstr = runOnLoadInstr(loadInst);
       } else if (StoreInst *storeInst = dyn_cast<StoreInst>(instr)) {
         newInstr = runOnStoreInstr(storeInst);
       } else if (CallInst *callInst = dyn_cast<CallInst>(instr)) {
         newInstr = runOnCallInst(callInst);
+      } else if (ReturnInst *retInst = dyn_cast<ReturnInst>(instr)) {
+        newInstr = runOnReturnInst(retInst);
       }
 
       if (newInstr) {
@@ -210,6 +215,22 @@ Array2Pointer::runOnCallInst(CallInst *callInst)
   }
 
   return (modified) ? callInst : nullptr;
+}
+
+Instruction *
+Array2Pointer::runOnReturnInst(ReturnInst *retInst)
+{
+  Value *val = retInst->getReturnValue();
+
+  ConstantExpr *consExpr = dyn_cast<ConstantExpr>(val);
+  if (!consExpr)
+    return nullptr;
+
+  Value *ptr = getArrayPointer(consExpr);
+  if (!ptr)
+    return nullptr;
+
+  return builder->CreateRet(ptr);
 }
 
 /* vim: set et ts=2 sw=2: */
