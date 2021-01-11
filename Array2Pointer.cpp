@@ -65,9 +65,9 @@ Array2Pointer::getArrayPointer(Value *array, ArrayType *arrayTy, Value *index)
   // We use this builder to setup our pointer to the given array.
   // This code is likely located at the beginning of a function
   // or basic block and will be instrumented by hardbound.
-  AllocaInst *inst = dyn_cast<AllocaInst>(array);
+  Instruction *inst = dyn_cast<Instruction>(array);
   if (!inst)
-    llvm_unreachable("expected alloca instruction");
+    llvm_unreachable("expected instruction");
   IRBuilder<> allocBuilder(inst->getNextNode());
 
   auto elemType = arrayTy->getElementType();
