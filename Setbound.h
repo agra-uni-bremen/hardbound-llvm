@@ -16,7 +16,7 @@
  *
  * This compiler pass instruments store instructions, inserting a
  * setbound instruction for each store which represents a pointer.
- * This allows bounds-checking to be peformed in the Hardware as
+ * This allows bounds-checking to be peformed in the hardware as
  * described in the original Hardbound paper.
  */
 struct Setbound : public llvm::FunctionPass {
