@@ -42,10 +42,9 @@ private:
   /* Calls the correct getArrayPointer() function for the given value */
   llvm::Value *value2array(llvm::Value *v);
 
+  llvm::Instruction *checkInstrOperands(llvm::Instruction *inst);
   llvm::Instruction *runOnStoreInstr(llvm::StoreInst *StoreInst);
   llvm::Instruction *runOnLoadInstr(llvm::LoadInst *loadInst);
-  llvm::Instruction *runOnCallInst(llvm::CallInst *callInst);
-  llvm::Instruction *runOnReturnInst(llvm::ReturnInst *retInst);
 };
 
 #endif

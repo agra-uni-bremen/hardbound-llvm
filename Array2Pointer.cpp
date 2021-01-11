@@ -22,17 +22,17 @@ Array2Pointer::runOnFunction(Function &F)
       auto instrBuilder = IRBuilder<>(instr);
       builder = &instrBuilder;
 
-      /* TODO: Is there any way to get rid of constant expressions in
-       * order to simplify this pass? callInst and retInst are only
-       * handeled because they may contain ConstantExprs */
+      /* Check all operands for getelementptr constant expressions. */
+      newInstr = checkInstrOperands(instr);
+      if (newInstr) {
+        modified = true;
+        continue;
+      }
+
       if (LoadInst *loadInst = dyn_cast<LoadInst>(instr)) {
         newInstr = runOnLoadInstr(loadInst);
       } else if (StoreInst *storeInst = dyn_cast<StoreInst>(instr)) {
         newInstr = runOnStoreInstr(storeInst);
-      } else if (CallInst *callInst = dyn_cast<CallInst>(instr)) {
-        newInstr = runOnCallInst(callInst);
-      } else if (ReturnInst *retInst = dyn_cast<ReturnInst>(instr)) {
-        newInstr = runOnReturnInst(retInst);
       }
 
       if (newInstr) {
@@ -155,6 +155,27 @@ Array2Pointer::value2array(Value *v)
 }
 
 Instruction *
+Array2Pointer::checkInstrOperands(Instruction *inst)
+{
+  bool modified = false;
+  for (size_t i = 0; i < inst->getNumOperands(); i++) {
+    Value *operand = inst->getOperand(i);
+    ConstantExpr *consExpr = dyn_cast<ConstantExpr>(operand);
+    if (!consExpr)
+      return nullptr;
+
+    Value *ptr = getArrayPointer(consExpr);
+    if (!ptr)
+      return nullptr;
+
+    inst->setOperand(i, ptr);
+    modified = true;
+  }
+
+  return (modified) ? inst : nullptr;
+}
+
+Instruction *
 Array2Pointer::runOnStoreInstr(StoreInst *storeInst)
 {
   Value *value = storeInst->getValueOperand();
@@ -192,45 +213,6 @@ Array2Pointer::runOnLoadInstr(LoadInst *loadInst)
   newLoad->setAlignment(loadInst->getAlign());
 
   return newLoad;
-}
-
-Instruction *
-Array2Pointer::runOnCallInst(CallInst *callInst)
-{
-  bool modified = false;
-
-  for (size_t i = 0; i < callInst->arg_size(); i++) {
-    Value *arg = callInst->getArgOperand(i);
-
-    ConstantExpr *consExpr = dyn_cast<ConstantExpr>(arg);
-    if (!consExpr)
-      return nullptr;
-
-    Value *ptr = getArrayPointer(consExpr);
-    if (!ptr)
-      return nullptr;
-
-    callInst->setArgOperand(i, ptr);
-    modified = true;
-  }
-
-  return (modified) ? callInst : nullptr;
-}
-
-Instruction *
-Array2Pointer::runOnReturnInst(ReturnInst *retInst)
-{
-  Value *val = retInst->getReturnValue();
-
-  ConstantExpr *consExpr = dyn_cast<ConstantExpr>(val);
-  if (!consExpr)
-    return nullptr;
-
-  Value *ptr = getArrayPointer(consExpr);
-  if (!ptr)
-    return nullptr;
-
-  return builder->CreateRet(ptr);
 }
 
 /* vim: set et ts=2 sw=2: */
