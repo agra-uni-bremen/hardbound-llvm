@@ -73,7 +73,8 @@ Array2Pointer::getArrayPointer(Value *array, ArrayType *arrayTy, Value *index)
     else
       llvm_unreachable("expected instruction or global variable");
   }
-  IRBuilder<> allocBuilder(inst->getNextNode());
+  Instruction *next = inst->getNextNode();
+  IRBuilder<> allocBuilder((next) ? next : inst);
 
   auto elemType = arrayTy->getElementType();
   auto ptrType = PointerType::get(elemType, 0);
