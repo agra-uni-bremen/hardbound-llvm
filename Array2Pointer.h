@@ -33,7 +33,6 @@ struct Array2Pointer : public llvm::FunctionPass {
 private:
 
   void shouldBeInBounds(llvm::Value *value);
-  llvm::Value *getElemPtrIndex(llvm::GetElementPtrInst *instr);
 
   llvm::Value *getArrayPointer(llvm::Value *array, llvm::ArrayType *arrayTy, llvm::Value *index);
   llvm::Value *getArrayPointer(llvm::GetElementPtrInst *gep);

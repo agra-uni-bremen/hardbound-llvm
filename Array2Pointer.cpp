@@ -59,20 +59,6 @@ Array2Pointer::shouldBeInBounds(Value *value)
 }
 
 Value *
-Array2Pointer::getElemPtrIndex(GetElementPtrInst *instr)
-{
-  /* From the LLVM Language Reference Manual:
-   *   […] the second index indexes a value of the type pointed to.
-   */
-  auto indices = instr->getNumIndices();
-  if (indices < 2)
-    llvm_unreachable("unexpected number of GEP indicies");
-  auto it = std::next(instr->idx_begin(), 1);
-
-  return *it;
-}
-
-Value *
 Array2Pointer::getArrayPointer(Value *array, ArrayType *arrayTy, Value *index)
 {
   auto elemType = arrayTy->getElementType();
@@ -119,7 +105,10 @@ Array2Pointer::getArrayPointer(GetElementPtrInst *gep)
   if (!array)
     return nullptr;
 
-  Value *index = getElemPtrIndex(gep);
+  /* From the LLVM Language Reference Manual:
+   *   […] the second index indexes a value of the type pointed to.
+   */
+  Value *index = gep->getOperand(2);
   return getArrayPointer(gep->getPointerOperand(), array, index);
 }
 
