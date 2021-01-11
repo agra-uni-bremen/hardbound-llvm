@@ -41,10 +41,11 @@ Array2Pointer::runOnFunction(Function &F)
       }
     }
 
-    if (modified)
-      errs() << bb << '\n';
+    /* if (modified) */
+    /*   errs() << bb << '\n'; */
   }
 
+  errs() << F << '\n';
   return modified;
 }
 
@@ -61,25 +62,36 @@ Array2Pointer::shouldBeInBounds(Value *value)
 Value *
 Array2Pointer::getArrayPointer(Value *array, ArrayType *arrayTy, Value *index)
 {
+  // We use this builder to setup our pointer to the given array.
+  // This code is likely located at the beginning of a function
+  // or basic block and will be instrumented by hardbound.
+  AllocaInst *inst = dyn_cast<AllocaInst>(array);
+  if (!inst)
+    llvm_unreachable("expected alloca instruction");
+  IRBuilder<> allocBuilder(inst->getNextNode());
+
   auto elemType = arrayTy->getElementType();
   auto ptrType = PointerType::get(elemType, 0);
 
   // Alloc space for pointer to array on the stack.
-  auto allocInstr = builder->CreateAlloca(ptrType);
+  auto allocInstr = allocBuilder.CreateAlloca(ptrType);
   allocInstr->setAlignment(DL->getPointerPrefAlignment());
 
   // Create a pointer to the first element of the array.
-  Value *elemPtr = builder->CreateGEP(array, builder->getInt32(0));
+  Value *elemPtr = allocBuilder.CreateGEP(array, allocBuilder.getInt32(0));
   shouldBeInBounds(elemPtr);
 
   // Store pointer to array in stack space created by alloca.
-  auto ptr = builder->CreatePointerCast(elemPtr, ptrType);
-  auto storeInst = builder->CreateStore(ptr, allocInstr);
+  auto ptr = allocBuilder.CreatePointerCast(elemPtr, ptrType);
+  auto storeInst = allocBuilder.CreateStore(ptr, allocInstr);
   storeInst->setAlignment(DL->getPointerPrefAlignment());
 
   // At this point: Pointer to array at index 0 is stored on stack
   // This store should be detected and instrumented by the Setbound pass.
   //
+  // The remaning code will rewrite the array access. Using
+  // this->builder instead of allocBuilder.
+
   // Next step: Load ptr and access the previously accessed array
   // index using the stored pointer later instrumented with Setbound.
   auto loadInst = builder->CreateLoad(ptrType, allocInstr);
