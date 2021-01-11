@@ -129,7 +129,10 @@ Array2Pointer::getArrayPointer(ConstantExpr *consExpr)
   if (consExpr->getOpcode() != Instruction::GetElementPtr)
     return nullptr;
 
-  Value *arrayPtr  = consExpr->getOperand(0);
+  Value *arrayPtr = consExpr->getOperand(0);
+  if (ConstantExpr *e = dyn_cast<ConstantExpr>(arrayPtr))
+    arrayPtr = e->getOperand(0); // XXX: nested expression, what if nested again?
+
   PointerType *ptr = dyn_cast<PointerType>(arrayPtr->getType());
   if (!ptr)
     return nullptr;
@@ -138,7 +141,10 @@ Array2Pointer::getArrayPointer(ConstantExpr *consExpr)
   if (!arrayTy)
     return nullptr;
 
-  Value *index = consExpr->getOperand(2);
+  auto numOps = consExpr->getNumOperands();
+  assert(numOps >= 2);
+
+  Value *index = consExpr->getOperand(numOps - 1);
   return getArrayPointer(arrayPtr, arrayTy, index);
 }
 
