@@ -14,6 +14,7 @@ Array2Pointer::runOnFunction(Function &F)
   bool modified = false;
   for (auto it = F.begin(); it != F.end(); it++) {
     BasicBlock &bb = *it;
+    currentBlock = &bb;
 
     for (auto instrIt = bb.begin(); instrIt != bb.end(); instrIt++) {
       Instruction *newInstr = nullptr;
@@ -66,8 +67,12 @@ Array2Pointer::getArrayPointer(Value *array, ArrayType *arrayTy, Value *index)
   // This code is likely located at the beginning of a function
   // or basic block and will be instrumented by hardbound.
   Instruction *inst = dyn_cast<Instruction>(array);
-  if (!inst)
-    llvm_unreachable("expected instruction");
+  if (!inst) {
+    if (dyn_cast<GlobalVariable>(array))
+      inst = currentBlock->getFirstNonPHI();
+    else
+      llvm_unreachable("expected instruction or global variable");
+  }
   IRBuilder<> allocBuilder(inst->getNextNode());
 
   auto elemType = arrayTy->getElementType();
