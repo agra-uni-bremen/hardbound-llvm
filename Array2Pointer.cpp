@@ -36,7 +36,8 @@ Array2Pointer::runOnFunction(Function &F)
       }
     }
 
-    errs() << bb << '\n';
+    if (modified)
+      errs() << bb << '\n';
   }
 
   return modified;
