@@ -192,7 +192,7 @@ Array2Pointer::runOnLoadInstr(LoadInst *loadInst)
 Instruction *
 Array2Pointer::runOnCallInst(CallInst *callInst)
 {
-  bool modified = true;
+  bool modified = false;
 
   for (size_t i = 0; i < callInst->arg_size(); i++) {
     Value *arg = callInst->getArgOperand(i);
