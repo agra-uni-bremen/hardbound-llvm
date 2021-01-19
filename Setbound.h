@@ -33,6 +33,7 @@ private:
   llvm::Instruction *buildSetbound(llvm::Value *pointer, llvm::Value *base, llvm::Value *numbytes);
   llvm::Instruction *runOnStoreInstr(llvm::StoreInst &storeInst);
 
+  bool isInstrumented(llvm::Value *value);
   llvm::Value *xsizeof(llvm::Type *type);
   llvm::Value *getArraySize(llvm::Type *type);
   llvm::Value *getValueByteSize(llvm::Value *value);

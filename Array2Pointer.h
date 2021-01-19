@@ -23,6 +23,7 @@
 struct Array2Pointer : public llvm::FunctionPass {
   static char ID; // Pass identification, replacement for typeid
 
+  llvm::BasicBlock *currentBlock;
   llvm::IRBuilder<> *builder;
   llvm::DataLayout *DL;
 
