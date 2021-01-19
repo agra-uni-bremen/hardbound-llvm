@@ -30,7 +30,10 @@ Setbound::runOnFunction(Function &F)
     for (auto instrIt = bb.begin(); instrIt != bb.end(); instrIt++) {
       Instruction *instr = cast<Instruction>(instrIt);
 
-      auto instrBuilder = IRBuilder<>(instr);
+      // Make sure builder places generated setbound instruction
+      // after the store instruction used to create the pointer.
+      Instruction *next = instr->getNextNode();
+      auto instrBuilder = IRBuilder<>((next) ? next : instr);
       builder = &instrBuilder;
 
       if (StoreInst *storeInst = dyn_cast<StoreInst>(instr)) {
