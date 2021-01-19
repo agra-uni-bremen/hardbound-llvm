@@ -128,7 +128,14 @@ Setbound::xsizeof(Type *type)
     return builder->getInt32(sl->getSizeInBytes());
   }
 
-  auto size = type->getScalarSizeInBits() / CHAR_BIT;
+  unsigned size;
+  if (type->isPointerTy()) {
+    size = DL->getPointerSize();
+  } else {
+    assert(type->getScalarSizeInBits() != 0);
+    size = type->getScalarSizeInBits() / CHAR_BIT;
+  }
+
   return builder->getInt32(size);
 }
 
