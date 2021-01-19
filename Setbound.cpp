@@ -49,6 +49,11 @@ Setbound::runOnFunction(Function &F)
 Instruction *
 Setbound::buildSetbound(Value *pointer, Value *base, Value *numbytes)
 {
+  if (isInstrumented(base)) {
+    errs() << "Already instrumented: " << *base << '\n';
+    return nullptr;
+  }
+
   auto i32 = builder->getInt32Ty();
 
   InlineAsm *Asm = InlineAsm::get(
@@ -81,9 +86,34 @@ Setbound::runOnStoreInstr(StoreInst &storeInst)
     return nullptr;
 
   Instruction *setboundInstr = buildSetbound(pointer, value, numbytes);
-  errs() << "\n\n" << "GENERATED: " << *setboundInstr << '\n';
+  if (setboundInstr)
+    errs() << "\n\n" << "GENERATED: " << *setboundInstr << '\n';
 
   return setboundInstr;
+}
+
+bool
+Setbound::isInstrumented(Value *value)
+{
+  // If we create a pointer from an existing pointer we don't need
+  // to add a setbound call for this new pointer since the bounds
+  // are already propagated from the existing one. Consider:
+  //
+  //   int *ptr1 = …;
+  //   int offset = 5;
+  //   int *ptr2 = ptr1 + offset;
+  //
+  // In this case no setbound call is needed for ptr2.
+
+  auto stripped = value->stripPointerCastsAndAliases();
+  if (const auto gep = dyn_cast<GetElementPtrInst>(stripped)) {
+    Value *operand = gep->getPointerOperand();
+    auto stripped = operand->stripPointerCastsAndAliases();
+
+    return stripped->getType()->isPointerTy();
+  }
+
+  return false;
 }
 
 Value *
