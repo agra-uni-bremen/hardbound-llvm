@@ -16,8 +16,7 @@ all: $(PROGRAMS)
 %.bc: %.c
 	$(CC) -emit-llvm -S -c -o $@ $< $(CFLAGS)
 %.ll: %.bc
-	opt -load $(HARDBOUND) -array2pointer 2>/dev/null < $< | \
-		opt -load $(HARDBOUND) -setbound 2>/dev/null > $@
+	opt -load $(HARDBOUND) -array2pointer -setbound 2>/dev/null < $< > $@
 %.o: %.ll
 	$(CC) -c -o $@ $< $(CFLAGS)
 %: bootstrap.o %.o
