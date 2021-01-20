@@ -1,4 +1,5 @@
 #include "Array2Pointer.h"
+#include "Utility.h"
 
 using namespace llvm;
 
@@ -102,24 +103,19 @@ Array2Pointer::getArrayPointer(Value *array, ArrayType *arrayTy, Value *index)
 }
 
 Value *
-Array2Pointer::convertGEP(Value *newPtr, User *oldInst)
+Array2Pointer::convertGEP(Value *newPtr, ArrayType *array, User *oldInst)
 {
-  Type *destTy = newPtr->getType()->getPointerElementType();
-  auto destTySize = destTy->getScalarSizeInBits() / CHAR_BIT;
+  auto destTySize = xsizeof(builder, DL, array);
 
   // Iterate over all indices (these start at GEP operand 1).
   Value *prevArray = newPtr;
   for (size_t i = 1; i < oldInst->getNumOperands(); i++) {
     Value *index = oldInst->getOperand(i);
-    Type *type = index->getType();
 
-    // XXX: I don't understand this in it's entirety but it seems that
-    // there are some edge cases where only i32 types are allowed as an
-    // indices, to make this work unconditionally we have to convert the
-    // given index to an i32 and adjust the value accordingly.
-    if (type != builder->getInt32Ty()) {
-      auto bytesize = (type->getScalarSizeInBits() / CHAR_BIT) / destTySize;
-      index = builder->getInt32(bytesize);
+    // The first index always indexes the pointer value given as the
+    // second argument, based on the size of this pointer value.
+    if (i == 1) {
+      index = builder->CreateMul(destTySize, index);
     }
 
     prevArray = builder->CreateGEP(prevArray, index);
@@ -144,7 +140,7 @@ Array2Pointer::convertGEP(GetElementPtrInst *gep)
     return nullptr;
 
   auto newPtr = getArrayPointer(pointer, array, builder->getInt32(0));
-  return convertGEP(newPtr, gep);
+  return convertGEP(newPtr, array, gep);
 }
 
 Value *
@@ -166,7 +162,7 @@ Array2Pointer::convertGEP(ConstantExpr *consExpr)
     return nullptr;
 
   auto newPtr = getArrayPointer(arrayPtr, arrayTy, builder->getInt32(0));
-  return convertGEP(newPtr, consExpr);
+  return convertGEP(newPtr, arrayTy, consExpr);
 }
 
 Value *
