@@ -4,7 +4,7 @@ override LD = riscv32-unknown-elf-gcc
 # Path to Hardbound LLVM compiler pass.
 HARDBOUND ?= LLVMHardbound.so
 
-CFLAGS  += -target riscv32-unknown-elf
+CFLAGS  += -w -target riscv32-unknown-elf
 CFLAGS  += -march=rv32i -mabi=ilp32
 LDFLAGS += -nostartfiles
 
