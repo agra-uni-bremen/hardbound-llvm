@@ -140,6 +140,19 @@ Array2Pointer::convertGEP(GetElementPtrInst *gep)
   Value *pointer = gep->getPointerOperand();
   Type *opType = gep->getPointerOperandType();
 
+  // If pointer operand is itself a GEP operation again, make sure to
+  // also convert that GEP recursively (consider a 2-level array access
+  // for example): `char buf[5][10]; buf[6][9] = 'A';` translated to:
+  //
+  //   %7 = getelementptr inbounds [5 x [10 x i8]], [5 x [10 x i8]]* %6, i32 0, i32 6
+  //   %8 = getelementptr inbounds [10 x i8], [10 x i8]* %7, i32 0, i32 9
+  //
+  // TODO: Similar handling probably required for ConstantExprs.
+  auto gepOp = dyn_cast<GetElementPtrInst>(pointer);
+  if (gepOp) {
+    pointer = convertGEP(gepOp);
+  }
+
   PointerType *ptr = dyn_cast<PointerType>(opType);
   if (!ptr)
     return nullptr;
