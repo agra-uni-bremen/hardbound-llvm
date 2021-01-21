@@ -150,7 +150,8 @@ Array2Pointer::convertGEP(GetElementPtrInst *gep)
   // TODO: Similar handling probably required for ConstantExprs.
   auto gepOp = dyn_cast<GetElementPtrInst>(pointer);
   if (gepOp) {
-    pointer = convertGEP(gepOp);
+    if (auto r = convertGEP(gepOp))
+      pointer = r;
   }
 
   PointerType *ptr = dyn_cast<PointerType>(opType);
