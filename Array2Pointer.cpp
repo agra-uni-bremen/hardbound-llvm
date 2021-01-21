@@ -107,16 +107,25 @@ Array2Pointer::convertGEP(Value *newPtr, ArrayType *array, User *oldInst)
 {
   auto destTySize = xsizeof(builder, DL, array);
 
-  // Iterate over all indices (these start at GEP operand 1).
+  // Unroll the getelementptr instruction. In LLVM IR the getelementptr
+  // instruction can contain multiple indices. The first index must be
+  // interpreted in terms of the pointer value passed as the second
+  // argument. This interpretation may change if we change as we change
+  // the type of the pointer argument.
+  //
+  // Iterate over all indices (these start at GEP operand 1), rewrite
+  // the first indices and use seperate GEP instructions for all
+  // following indices.
+  //
+  // XXX: Is it sufficient to simply rewrite the first index?
   Value *prevArray = newPtr;
   for (size_t i = 1; i < oldInst->getNumOperands(); i++) {
     Value *index = oldInst->getOperand(i);
 
     // The first index always indexes the pointer value given as the
     // second argument, based on the size of this pointer value.
-    if (i == 1) {
+    if (i == 1)
       index = builder->CreateMul(destTySize, index);
-    }
 
     prevArray = builder->CreateGEP(prevArray, index);
   }
