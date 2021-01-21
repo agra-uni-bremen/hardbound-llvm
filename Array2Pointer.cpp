@@ -1,4 +1,5 @@
 #include "Array2Pointer.h"
+#include "Utility.h"
 
 using namespace llvm;
 
@@ -83,8 +84,8 @@ Array2Pointer::getArrayPointer(Value *array, ArrayType *arrayTy, Value *index)
   auto allocInstr = allocBuilder.CreateAlloca(ptrType);
   allocInstr->setAlignment(DL->getPointerPrefAlignment());
 
-  // Create a pointer to the first element of the array.
-  Value *elemPtr = allocBuilder.CreateGEP(array, allocBuilder.getInt32(0));
+  // Create a pointer to the given element of the array.
+  Value *elemPtr = allocBuilder.CreateGEP(array, index);
   shouldBeInBounds(elemPtr);
 
   // Store pointer to array in stack space created by alloca.
@@ -92,29 +93,53 @@ Array2Pointer::getArrayPointer(Value *array, ArrayType *arrayTy, Value *index)
   auto storeInst = allocBuilder.CreateStore(ptr, allocInstr);
   storeInst->setAlignment(DL->getPointerPrefAlignment());
 
-  // At this point: Pointer to array at index 0 is stored on stack
-  // This store should be detected and instrumented by the Setbound pass.
-  //
-  // The remaning code will rewrite the array access. Using
-  // this->builder instead of allocBuilder.
-
-  // Next step: Load ptr and access the previously accessed array
-  // index using the stored pointer later instrumented with Setbound.
+  // Next step: Load ptr and return it, allows performing
+  // a new access at a new index using getelementptr on
+  // this returned loadInst.
   auto loadInst = builder->CreateLoad(ptrType, allocInstr);
   loadInst->setAlignment(DL->getPointerPrefAlignment());
 
-  // Using the loaded pointer, create a getelementptr instruction
-  // which access the value previously accessed directly.
-  Value *elem = builder->CreateGEP(elemType, loadInst, index);
-  shouldBeInBounds(elem);
-
-  return elem;
+  return loadInst;
 }
 
 Value *
-Array2Pointer::getArrayPointer(GetElementPtrInst *gep)
+Array2Pointer::convertGEP(Value *newPtr, ArrayType *array, User *oldInst)
 {
+  auto destTySize = xsizeof(builder, DL, array);
+
+  // Unroll the getelementptr instruction. In LLVM IR the getelementptr
+  // instruction can contain multiple indices. The first index must be
+  // interpreted in terms of the pointer value passed as the second
+  // argument. This interpretation may change if we change as we change
+  // the type of the pointer argument.
+  //
+  // Iterate over all indices (these start at GEP operand 1), rewrite
+  // the first indices and use seperate GEP instructions for all
+  // following indices.
+  //
+  // XXX: Is it sufficient to simply rewrite the first index?
+  Value *prevArray = newPtr;
+  for (size_t i = 1; i < oldInst->getNumOperands(); i++) {
+    Value *index = oldInst->getOperand(i);
+
+    // The first index always indexes the pointer value given as the
+    // second argument, based on the size of this pointer value.
+    if (i == 1)
+      index = builder->CreateMul(destTySize, index);
+
+    prevArray = builder->CreateGEP(prevArray, index);
+  }
+
+  assert(prevArray != newPtr); /* at least one iteration required */
+  return prevArray;
+}
+
+Value *
+Array2Pointer::convertGEP(GetElementPtrInst *gep)
+{
+  Value *pointer = gep->getPointerOperand();
   Type *opType = gep->getPointerOperandType();
+
   PointerType *ptr = dyn_cast<PointerType>(opType);
   if (!ptr)
     return nullptr;
@@ -123,15 +148,12 @@ Array2Pointer::getArrayPointer(GetElementPtrInst *gep)
   if (!array)
     return nullptr;
 
-  /* From the LLVM Language Reference Manual:
-   *   […] the second index indexes a value of the type pointed to.
-   */
-  Value *index = gep->getOperand(2);
-  return getArrayPointer(gep->getPointerOperand(), array, index);
+  auto newPtr = getArrayPointer(pointer, array, builder->getInt32(0));
+  return convertGEP(newPtr, array, gep);
 }
 
 Value *
-Array2Pointer::getArrayPointer(ConstantExpr *consExpr)
+Array2Pointer::convertGEP(ConstantExpr *consExpr)
 {
   if (consExpr->getOpcode() != Instruction::GetElementPtr)
     return nullptr;
@@ -148,20 +170,17 @@ Array2Pointer::getArrayPointer(ConstantExpr *consExpr)
   if (!arrayTy)
     return nullptr;
 
-  auto numOps = consExpr->getNumOperands();
-  assert(numOps >= 2);
-
-  Value *index = consExpr->getOperand(numOps - 1);
-  return getArrayPointer(arrayPtr, arrayTy, index);
+  auto newPtr = getArrayPointer(arrayPtr, arrayTy, builder->getInt32(0));
+  return convertGEP(newPtr, arrayTy, consExpr);
 }
 
 Value *
 Array2Pointer::value2array(Value *v)
 {
   if (ConstantExpr *consExpr = dyn_cast<ConstantExpr>(v)) {
-    return getArrayPointer(consExpr);
+    return convertGEP(consExpr);
   } else if (GetElementPtrInst *elemPtrInst = dyn_cast<GetElementPtrInst>(v)) {
-    return getArrayPointer(elemPtrInst);
+    return convertGEP(elemPtrInst);
   } else {
     return nullptr;
   }
@@ -177,7 +196,7 @@ Array2Pointer::checkInstrOperands(Instruction *inst)
     if (!consExpr)
       return nullptr;
 
-    Value *ptr = getArrayPointer(consExpr);
+    Value *ptr = convertGEP(consExpr);
     if (!ptr)
       return nullptr;
 

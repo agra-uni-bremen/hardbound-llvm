@@ -36,10 +36,12 @@ private:
   void shouldBeInBounds(llvm::Value *value);
 
   llvm::Value *getArrayPointer(llvm::Value *array, llvm::ArrayType *arrayTy, llvm::Value *index);
-  llvm::Value *getArrayPointer(llvm::GetElementPtrInst *gep);
-  llvm::Value *getArrayPointer(llvm::ConstantExpr *consExpr);
 
-  /* Calls the correct getArrayPointer() function for the given value */
+  llvm::Value *convertGEP(llvm::GetElementPtrInst *gep);
+  llvm::Value *convertGEP(llvm::ConstantExpr *consExpr);
+  llvm::Value *convertGEP(llvm::Value *newPtr, llvm::ArrayType *array, llvm::User *oldInst);
+
+  /* Calls the correct convertGEP() function for the given value */
   llvm::Value *value2array(llvm::Value *v);
 
   llvm::Instruction *checkInstrOperands(llvm::Instruction *inst);

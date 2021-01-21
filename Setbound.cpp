@@ -2,6 +2,7 @@
 #include <stdint.h>
 
 #include "Setbound.h"
+#include "Utility.h"
 
 #define SETBOUND_ASM  \
   "li x17, 98\n"      \
@@ -117,39 +118,6 @@ Setbound::isInstrumented(Value *value)
 }
 
 Value *
-Setbound::xsizeof(Type *type)
-{
-  if (type->isArrayTy())
-    return getArraySize(type);
-
-  StructType *tstruct = dyn_cast<StructType>(type);
-  if (tstruct) {
-    const StructLayout *sl = DL->getStructLayout(tstruct);
-    return builder->getInt32(sl->getSizeInBytes());
-  }
-
-  auto size = type->getScalarSizeInBits() / CHAR_BIT;
-  return builder->getInt32(size);
-}
-
-Value *
-Setbound::getArraySize(Type *type)
-{
-  if (!type->isArrayTy())
-    return nullptr;
-
-  auto elems = type->getArrayNumElements();
-  auto elem_size = xsizeof(type->getArrayElementType());
-
-  auto elem_size_const = dyn_cast<llvm::ConstantInt>(elem_size);
-  if (!elem_size)
-    llvm_unreachable("elem_size is not constant");
-
-  size_t total_size = elems * elem_size_const->getZExtValue();
-  return builder->getInt32(total_size);
-}
-
-Value *
 Setbound::getValueByteSize(Value *value)
 {
   /* Discard pointer casts as they are(?) irrelevant for this analysis. */
@@ -158,11 +126,11 @@ Setbound::getValueByteSize(Value *value)
   Value *numbytes = nullptr;
   if (const auto allocaInst = dyn_cast<AllocaInst>(value)) { /* pointer to stack-based scalar */
     auto allocated = allocaInst->getAllocatedType();
-    numbytes = xsizeof(allocated);
+    numbytes = xsizeof(builder, DL, allocated);
   } else if (const auto elemPtrInst = dyn_cast<GetElementPtrInst>(value)) { /* pointer to stack-based buffer */
     auto sourceElem = elemPtrInst->getSourceElementType();
 
-    numbytes = xsizeof(sourceElem);
+    numbytes = xsizeof(builder, DL, sourceElem);
   } else if (const auto consExpr = dyn_cast<ConstantExpr>(value)) { /* pointer to constant/global buffer */
     if (consExpr->getOpcode() != Instruction::GetElementPtr)
       return nullptr;
@@ -172,13 +140,13 @@ Setbound::getValueByteSize(Value *value)
     if (!ptr)
       return nullptr;
 
-    numbytes = xsizeof(ptr->getElementType());
+    numbytes = xsizeof(builder, DL, ptr->getElementType());
   } else if (const auto globalVar = dyn_cast<GlobalVariable>(value)) { /* pointer to global scalar */
     PointerType *ptr = dyn_cast<PointerType>(globalVar->getType());
     if (!ptr)
       return nullptr;
 
-    numbytes = xsizeof(ptr->getElementType());
+    numbytes = xsizeof(builder, DL, ptr->getElementType());
   }
 
   return numbytes;

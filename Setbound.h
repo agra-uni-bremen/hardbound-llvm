@@ -34,8 +34,6 @@ private:
   llvm::Instruction *runOnStoreInstr(llvm::StoreInst &storeInst);
 
   bool isInstrumented(llvm::Value *value);
-  llvm::Value *xsizeof(llvm::Type *type);
-  llvm::Value *getArraySize(llvm::Type *type);
   llvm::Value *getValueByteSize(llvm::Value *value);
 };
 
