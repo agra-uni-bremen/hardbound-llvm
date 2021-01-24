@@ -19,7 +19,7 @@ static void registerHardboundPass(const PassManagerBuilder &, legacy::PassManage
 }
 
 static llvm::RegisterStandardPasses Y(
-  llvm::PassManagerBuilder::EP_FullLinkTimeOptimizationEarly,
+  llvm::PassManagerBuilder::EP_EarlyAsPossible,
   registerHardboundPass
 );
 
