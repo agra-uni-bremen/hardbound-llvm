@@ -19,7 +19,7 @@ should result in `llvm/build/lib/LLVMHardbound.so` being generated.
 
 After generating `LLVMHardbound.so` run:
 
-	$ opt -load LLVMHardbound.so -hardbound < code.bc > code-with-setbound.bc
+	$ clang -Xclang -load -Xclang LLVMHardbound.so code.c
 
 ## Tests
 
