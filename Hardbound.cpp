@@ -1,7 +1,9 @@
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/IR/Module.h"
+#include "llvm/Transforms/IPO/PassManagerBuilder.h"
+
 #include "Array2Pointer.h"
 #include "Setbound.h"
-
-#define DEBUG_TYPE "hardbound"
 
 using namespace llvm;
 
@@ -10,5 +12,15 @@ static RegisterPass<Array2Pointer> A("array2pointer", "hardbound array2pointer c
 
 char Setbound::ID = 0;
 static RegisterPass<Setbound> S("setbound", "hardbound setbounds compiler pass");
+
+static void registerHardboundPass(const PassManagerBuilder &, legacy::PassManagerBase &PM) {
+  PM.add(new Array2Pointer());
+  PM.add(new Setbound());
+}
+
+static llvm::RegisterStandardPasses Y(
+  llvm::PassManagerBuilder::EP_EarlyAsPossible,
+  registerHardboundPass
+);
 
 /* vim: set et ts=2 sw=2: */
