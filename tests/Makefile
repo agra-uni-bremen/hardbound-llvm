@@ -6,6 +6,10 @@ HARDBOUND ?= LLVMHardbound.so
 
 CFLAGS  += -w -target riscv32-unknown-elf
 CFLAGS  += -march=rv32i -mabi=ilp32
+
+CFLAGS  += -Xclang -load
+CFLAGS  += -Xclang $(HARDBOUND)
+
 LDFLAGS += -nostartfiles
 
 SOURCES  = $(wildcard *.c)
@@ -13,12 +17,8 @@ PROGRAMS = $(SOURCES:.c=)
 
 all: $(PROGRAMS)
 
-%.bc: %.c
-	$(CC) -emit-llvm -S -c -o $@ $< $(CFLAGS)
-%.ll: %.bc
-	opt -load $(HARDBOUND) -array2pointer -setbound 2>/dev/null < $< > $@
-%.o: %.ll
-	$(CC) -c -o $@ $< $(CFLAGS)
+%.o: %.c
+	clang -c -o $@ $< $(CFLAGS) 2>/dev/null
 %: bootstrap.o %.o
 	$(LD) -o $@ $^ $(LDFLAGS)
 
@@ -29,6 +29,3 @@ bootstrap.o: bootstrap.S
 
 # Disable all implicit makefile rules
 .SUFFIXES:
-
-# Make sure that intermediate files are not deleted
-.SECONDARY:
