@@ -24,7 +24,6 @@ struct Array2Pointer : public llvm::FunctionPass {
   static char ID; // Pass identification, replacement for typeid
 
   llvm::BasicBlock *currentBlock;
-  llvm::IRBuilder<> *builder;
   llvm::DataLayout *DL;
 
   Array2Pointer() : FunctionPass(ID) {}
@@ -33,20 +32,16 @@ struct Array2Pointer : public llvm::FunctionPass {
 
 private:
 
-  void shouldBeInBounds(llvm::Value *value);
+  /**
+    * Returns a LoadInst which loads the result of a generated
+    * GetElementPtrInst for the given source type and the given pointer.
+    * Storing the GetElementPtr result on the stack allows instrumenting
+    * it using the Setbound pass later on.
+    */
+  llvm::Value *convertGEP(llvm::Type *sElemType, llvm::Value *pointer);
 
-  llvm::Value *getArrayPointer(llvm::Value *array, llvm::ArrayType *arrayTy, llvm::Value *index);
-
-  llvm::Value *convertGEP(llvm::GetElementPtrInst *gep);
-  llvm::Value *convertGEP(llvm::ConstantExpr *consExpr);
-  llvm::Value *convertGEP(llvm::Value *newPtr, llvm::ArrayType *array, llvm::User *oldInst);
-
-  /* Calls the correct convertGEP() function for the given value */
-  llvm::Value *value2array(llvm::Value *v);
-
-  llvm::Instruction *checkInstrOperands(llvm::Instruction *inst);
-  llvm::Instruction *runOnStoreInstr(llvm::StoreInst *StoreInst);
-  llvm::Instruction *runOnLoadInstr(llvm::LoadInst *loadInst);
+  void runOnGEP(llvm::GetElementPtrInst *gep);
+  bool updateConsExprs(llvm::Instruction *inst);
 };
 
 #endif
