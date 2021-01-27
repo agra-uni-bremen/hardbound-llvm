@@ -44,12 +44,16 @@ Array2Pointer::convertGEP(Type *sElemType, Value *pointer) {
     // which creates the given pointer value.
     Instruction *next = inst->getNextNode();
     inst = (next) ? next : inst;
-  } else if (dyn_cast<GlobalVariable>(pointer)) {
-      inst = currentBlock->getFirstNonPHI();
-  } else if (dyn_cast<ConstantExpr>(pointer)) {
-      inst = currentBlock->getFirstNonPHI();
+  } else if (dyn_cast<GlobalVariable>(pointer) || dyn_cast<ConstantExpr>(pointer)) {
+    inst = currentBlock->getFirstNonPHI();
+    for (Instruction &i : *currentBlock) {
+      if (isa<PHINode>(i))
+        return nullptr; /* TODO: Can't handle these ATM */
+      inst = &i;
+      break;
+    }
   } else {
-      llvm_unreachable("expected instruction, global variable, or expression");
+    llvm_unreachable("expected instruction, global variable, or expression");
   }
   IRBuilder<> allocBuilder(inst);
 
