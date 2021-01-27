@@ -22,8 +22,8 @@ Array2Pointer::runOnFunction(Function &F)
       if (updateConsExprs(instr)) {
         modified = true;
       } else if (auto *gep = dyn_cast<GetElementPtrInst>(instr)) {
-        runOnGEP(gep);
-        modified = true;
+        if (runOnGEP(gep))
+          modified = true;
       }
     }
   }
@@ -34,6 +34,7 @@ Array2Pointer::runOnFunction(Function &F)
 
 Value *
 Array2Pointer::convertGEP(Type *sElemType, Value *pointer) {
+  errs() << "pointer: " << *pointer << '\n';
   // We use this builder to setup our pointer to the given array.
   // This code is likely located at the beginning of a function
   // or basic block and will be instrumented by hardbound.
@@ -41,8 +42,10 @@ Array2Pointer::convertGEP(Type *sElemType, Value *pointer) {
   if (!inst) {
     if (dyn_cast<GlobalVariable>(pointer))
       inst = currentBlock->getFirstNonPHI();
+    else if (dyn_cast<ConstantExpr>(pointer))
+      inst = currentBlock->getFirstNonPHI();
     else
-      llvm_unreachable("expected instruction or global variable");
+      llvm_unreachable("expected instruction, global variable, or expression");
   }
   Instruction *next = inst->getNextNode();
   IRBuilder<> allocBuilder((next) ? next : inst);
@@ -69,7 +72,7 @@ Array2Pointer::convertGEP(Type *sElemType, Value *pointer) {
   return loadInst;
 }
 
-void
+bool
 Array2Pointer::runOnGEP(GetElementPtrInst *gep)
 {
   Type *sourceElem = gep->getSourceElementType();
@@ -79,7 +82,11 @@ Array2Pointer::runOnGEP(GetElementPtrInst *gep)
   errs() << "pointer: " << *pointer << '\n';
 
   auto baseLoad = convertGEP(sourceElem, pointer);
+  if (!baseLoad)
+    return false;
+
   gep->setOperand(0, baseLoad);
+  return true;
 }
 
 bool
@@ -95,13 +102,15 @@ Array2Pointer::updateConsExprs(Instruction *inst)
     if (consExpr->getOpcode() != Instruction::GetElementPtr)
       continue;
     const auto *go = cast<GEPOperator>(consExpr);
+    Type *sourceElem = go->getSourceElementType();
 
     Value *pointer = consExpr->getOperand(0);
     if (dyn_cast<ConstantExpr>(pointer))
       continue; // TODO: Handle nested expressions
 
-    Type *sourceElem = go->getSourceElementType();
     auto baseLoad = convertGEP(sourceElem, pointer);
+    if (!baseLoad)
+      return false;
 
     // Convert ConstantExpr to non-constant GetElementPtrInst.
     // Taken from ConstantExpr::getAsInstruction().

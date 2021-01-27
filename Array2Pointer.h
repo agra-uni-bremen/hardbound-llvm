@@ -40,7 +40,7 @@ private:
     */
   llvm::Value *convertGEP(llvm::Type *sElemType, llvm::Value *pointer);
 
-  void runOnGEP(llvm::GetElementPtrInst *gep);
+  bool runOnGEP(llvm::GetElementPtrInst *gep);
   bool updateConsExprs(llvm::Instruction *inst);
 };
 
