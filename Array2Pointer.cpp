@@ -39,16 +39,19 @@ Array2Pointer::convertGEP(Type *sElemType, Value *pointer) {
   // This code is likely located at the beginning of a function
   // or basic block and will be instrumented by hardbound.
   Instruction *inst = dyn_cast<Instruction>(pointer);
-  if (!inst) {
-    if (dyn_cast<GlobalVariable>(pointer))
+  if (inst) {
+    // Make sure code is inserted **after** the instruction
+    // which creates the given pointer value.
+    Instruction *next = inst->getNextNode();
+    inst = (next) ? next : inst;
+  } else if (dyn_cast<GlobalVariable>(pointer)) {
       inst = currentBlock->getFirstNonPHI();
-    else if (dyn_cast<ConstantExpr>(pointer))
+  } else if (dyn_cast<ConstantExpr>(pointer)) {
       inst = currentBlock->getFirstNonPHI();
-    else
+  } else {
       llvm_unreachable("expected instruction, global variable, or expression");
   }
-  Instruction *next = inst->getNextNode();
-  IRBuilder<> allocBuilder((next) ? next : inst);
+  IRBuilder<> allocBuilder(inst);
 
   ArrayRef<Value*> indices;
   assert(indices.empty());
