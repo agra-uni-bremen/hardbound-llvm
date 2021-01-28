@@ -1,5 +1,8 @@
 #include <assert.h>
 #include <stdint.h>
+#include <stdlib.h>
+
+#include "llvm/IR/IntrinsicInst.h"
 
 #include "Setbound.h"
 #include "Utility.h"
@@ -30,6 +33,18 @@ Setbound::runOnFunction(Function &F)
 
     for (auto instrIt = bb.begin(); instrIt != bb.end(); instrIt++) {
       Instruction *instr = cast<Instruction>(instrIt);
+
+      // TODO: VLAs result in false-positives currently. Make sure the
+      // byte code doesn't use them.
+      if (auto ci = dyn_cast<CallInst>(instr)) {
+        if (auto intrinsic = dyn_cast<IntrinsicInst>(ci)) {
+          auto id = intrinsic->getIntrinsicID();
+          if (id == Intrinsic::stacksave || id == Intrinsic::stackrestore) {
+            errs() << "VLAs not supported in " << F.getName() << '\n';
+            exit(EXIT_FAILURE);
+          }
+        }
+      }
 
       // Make sure builder places generated setbound instruction
       // after the store instruction used to create the pointer.
