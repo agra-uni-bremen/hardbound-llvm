@@ -1,0 +1,7 @@
+* VLAs <https://llvm.org/docs/LangRef.html#llvm-stacksave-intrinsic>
+	* https://llvm.org/docs/LangRef.html#llvm-stacksave-intrinsic
+* Struct member buffer (see SARD test suite)
+* Nested getelementptr expressions
+	* See tests/nested-getelementptr-expr.c
+* Code using getelementptr ConsExprs as part of a PHI instruction
+	* https://llvm.org/docs/LangRef.html#phi-instruction
