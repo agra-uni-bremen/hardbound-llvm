@@ -53,7 +53,7 @@ Array2Pointer::convertGEP(Type *sElemType, Value *pointer) {
       break;
     }
   } else {
-    llvm_unreachable("expected instruction, global variable, or expression");
+    return nullptr;
   }
   IRBuilder<> allocBuilder(inst);
 
