@@ -5,7 +5,6 @@
 #include "llvm/IR/IntrinsicInst.h"
 
 #include "Setbound.h"
-#include "Utility.h"
 
 #define SETBOUND_ASM  \
   "li x17, 98\n"      \
@@ -141,11 +140,11 @@ Setbound::getValueByteSize(Value *value)
   Value *numbytes = nullptr;
   if (const auto allocaInst = dyn_cast<AllocaInst>(value)) { /* pointer to stack-based scalar */
     auto allocated = allocaInst->getAllocatedType();
-    numbytes = xsizeof(builder, DL, allocated);
+    numbytes = xsizeof(DL, allocated);
   } else if (const auto elemPtrInst = dyn_cast<GetElementPtrInst>(value)) { /* pointer to stack-based buffer */
     auto sourceElem = elemPtrInst->getSourceElementType();
 
-    numbytes = xsizeof(builder, DL, sourceElem);
+    numbytes = xsizeof(DL, sourceElem);
   } else if (const auto consExpr = dyn_cast<ConstantExpr>(value)) { /* pointer to constant/global buffer */
     if (consExpr->getOpcode() != Instruction::GetElementPtr)
       return nullptr;
@@ -155,16 +154,57 @@ Setbound::getValueByteSize(Value *value)
     if (!ptr)
       return nullptr;
 
-    numbytes = xsizeof(builder, DL, ptr->getElementType());
+    numbytes = xsizeof(DL, ptr->getElementType());
   } else if (const auto globalVar = dyn_cast<GlobalVariable>(value)) { /* pointer to global scalar */
     PointerType *ptr = dyn_cast<PointerType>(globalVar->getType());
     if (!ptr)
       return nullptr;
 
-    numbytes = xsizeof(builder, DL, ptr->getElementType());
+    numbytes = xsizeof(DL, ptr->getElementType());
   }
 
   return numbytes;
+}
+
+Value *
+Setbound::getArraySize(DataLayout *DL, Type *type)
+{
+  if (!type->isArrayTy())
+    return nullptr;
+
+  auto elems = type->getArrayNumElements();
+  auto elem_size = xsizeof(DL, type->getArrayElementType());
+
+  auto elem_size_const = dyn_cast<ConstantInt>(elem_size);
+  if (!elem_size)
+    llvm_unreachable("elem_size is not constant");
+
+  size_t total_size = elems * elem_size_const->getZExtValue();
+  return builder->getInt32(total_size);
+}
+
+
+Value *
+Setbound::xsizeof(DataLayout *DL, Type *type)
+{
+  if (type->isArrayTy())
+    return getArraySize(DL, type);
+
+  StructType *tstruct = dyn_cast<StructType>(type);
+  if (tstruct) {
+    const StructLayout *sl = DL->getStructLayout(tstruct);
+    return builder->getInt32(sl->getSizeInBytes());
+  }
+
+  unsigned size;
+  if (type->isPointerTy()) {
+    size = DL->getPointerSize();
+  } else {
+    assert(type->getScalarSizeInBits() != 0);
+    size = type->getScalarSizeInBits() / CHAR_BIT;
+  }
+
+  return builder->getInt32(size);
 }
 
 /* vim: set et ts=2 sw=2: */

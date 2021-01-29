@@ -14,7 +14,6 @@ add_llvm_library( LLVMHardbound MODULE BUILDTREE_ONLY
   Array2Pointer.cpp
   Setbound.cpp
   Hardbound.cpp
-  Utility.cpp
 
   DEPENDS
   intrinsics_gen

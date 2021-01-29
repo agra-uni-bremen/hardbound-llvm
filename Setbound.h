@@ -35,6 +35,9 @@ private:
 
   bool isInstrumented(llvm::Value *value);
   llvm::Value *getValueByteSize(llvm::Value *value);
+
+  llvm::Value *getArraySize(llvm::DataLayout *DL, llvm::Type *type);
+  llvm::Value *xsizeof(llvm::DataLayout *DL, llvm::Type *type);
 };
 
 #endif
