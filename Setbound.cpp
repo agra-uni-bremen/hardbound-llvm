@@ -120,12 +120,18 @@ Setbound::isInstrumented(Value *value)
   //
   // In this case no setbound call is needed for ptr2.
 
-  auto stripped = stripPointerCasts(value);
-  if (const auto gep = dyn_cast<GetElementPtrInst>(stripped)) {
+  auto opStrip = stripPointerCasts(value);
+  if (const auto gep = dyn_cast<GetElementPtrInst>(opStrip)) {
     Value *operand = gep->getPointerOperand();
     auto stripped = stripPointerCasts(operand);
 
-    return stripped->getType()->isPointerTy();
+    // Access to struct members are not instrumented.
+    auto t = stripped->getType();
+    if (t->getPointerElementType()->isStructTy() && gep->getNumIndices() >= 2) {
+      return false;
+    }
+
+    return t->isPointerTy();
   }
 
   return false;
@@ -156,14 +162,13 @@ Value *
 Setbound::getValueByteSize(Value *value)
 {
   value = stripPointerCasts(value);
-  errs() << "value: " << *value << '\n';
 
   Value *numbytes = nullptr;
   if (const auto allocaInst = dyn_cast<AllocaInst>(value)) { /* pointer to stack-based scalar */
     auto allocated = allocaInst->getAllocatedType();
     numbytes = xsizeof(DL, allocated);
   } else if (const auto elemPtrInst = dyn_cast<GetElementPtrInst>(value)) { /* pointer to stack-based buffer */
-    auto sourceElem = elemPtrInst->getSourceElementType();
+    auto sourceElem = elemPtrInst->getResultElementType();
 
     numbytes = xsizeof(DL, sourceElem);
   } else if (const auto consExpr = dyn_cast<ConstantExpr>(value)) { /* pointer to constant/global buffer */
