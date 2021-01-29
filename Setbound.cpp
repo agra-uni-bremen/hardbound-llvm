@@ -120,10 +120,10 @@ Setbound::isInstrumented(Value *value)
   //
   // In this case no setbound call is needed for ptr2.
 
-  auto stripped = value->stripPointerCastsAndAliases();
+  auto stripped = stripPointerCasts(value);
   if (const auto gep = dyn_cast<GetElementPtrInst>(stripped)) {
     Value *operand = gep->getPointerOperand();
-    auto stripped = operand->stripPointerCastsAndAliases();
+    auto stripped = stripPointerCasts(operand);
 
     return stripped->getType()->isPointerTy();
   }
@@ -131,11 +131,32 @@ Setbound::isInstrumented(Value *value)
   return false;
 }
 
+// Custom version of Value::stripPointerCasts which only strips bitcasts
+// and getelementptr instructions with no indices (as created by Array2Pointer).
+Value *
+Setbound::stripPointerCasts(Value *value)
+{
+  for (;;) {
+    if (Operator::getOpcode(value) == Instruction::BitCast) {
+      value = cast<Operator>(value)->getOperand(0);
+    } else if (auto *gep = dyn_cast<GEPOperator>(value)) {
+      if (gep->hasIndices())
+        break;
+      else
+        value = gep->getPointerOperand();
+    } else {
+      break;
+    }
+  }
+
+  return value;
+}
+
 Value *
 Setbound::getValueByteSize(Value *value)
 {
-  /* Discard pointer casts as they are(?) irrelevant for this analysis. */
-  value = value->stripPointerCasts();
+  value = stripPointerCasts(value);
+  errs() << "value: " << *value << '\n';
 
   Value *numbytes = nullptr;
   if (const auto allocaInst = dyn_cast<AllocaInst>(value)) { /* pointer to stack-based scalar */
