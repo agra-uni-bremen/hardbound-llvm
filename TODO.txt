@@ -6,3 +6,5 @@
 	* https://llvm.org/docs/LangRef.html#phi-instruction
 * Overflows of global pointers
 	* See tests/wip/global-ptr-bounds.c
+* Better support for unions
+	* See sard tests
