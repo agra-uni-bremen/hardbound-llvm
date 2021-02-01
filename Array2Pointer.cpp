@@ -18,9 +18,6 @@ Array2Pointer::runOnFunction(Function &F)
 
     for (auto instrIt = bb.begin(); instrIt != bb.end(); instrIt++) {
       Instruction *instr = cast<Instruction>(instrIt);
-      if (isa<PHINode>(instr))
-        continue; /* TODO: Can't handle these properly ATM */
-
       if (updateConsExprs(instr)) {
         modified = true;
       } else if (auto *gep = dyn_cast<GetElementPtrInst>(instr)) {
@@ -120,7 +117,7 @@ Array2Pointer::updateConsExprs(Instruction *inst)
     // Taken from ConstantExpr::getAsInstruction().
     SmallVector<Value *, 4> ValueOperands(consExpr->op_begin(), consExpr->op_end());
     ArrayRef<Value*> Ops(ValueOperands);
-    IRBuilder<> builder(inst);
+    IRBuilder<> builder(cast<Instruction>(baseLoad)->getNextNode());
     auto newGEP = builder.CreateGEP(sourceElem, baseLoad, Ops.slice(1));
 
     inst->setOperand(i, newGEP);
