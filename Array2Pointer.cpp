@@ -7,6 +7,7 @@ Array2Pointer::runOnFunction(Function &F)
 {
   errs() << "Array2Pointer: ";
   errs().write_escaped(F.getName()) << '\n';
+  currentFunc = &F;
 
   DataLayout dataLayout = F.getParent()->getDataLayout();
   DL = &dataLayout;
@@ -14,10 +15,12 @@ Array2Pointer::runOnFunction(Function &F)
   bool modified = false;
   for (auto it = F.begin(); it != F.end(); it++) {
     BasicBlock &bb = *it;
-    currentBlock = &bb;
 
     for (auto instrIt = bb.begin(); instrIt != bb.end(); instrIt++) {
       Instruction *instr = cast<Instruction>(instrIt);
+      if (isa<PHINode>(instr))
+        continue; /* TODO: Can't handle these properly ATM */
+
       if (updateConsExprs(instr)) {
         modified = true;
       } else if (auto *gep = dyn_cast<GetElementPtrInst>(instr)) {
@@ -44,13 +47,8 @@ Array2Pointer::convertGEP(Type *sElemType, Value *pointer) {
     Instruction *next = inst->getNextNode();
     inst = (next) ? next : inst;
   } else if (dyn_cast<GlobalVariable>(pointer) || dyn_cast<ConstantExpr>(pointer)) {
-    inst = currentBlock->getFirstNonPHI();
-    for (Instruction &i : *currentBlock) {
-      if (isa<PHINode>(i))
-        return nullptr; /* TODO: Can't handle these ATM */
-      inst = &i;
-      break;
-    }
+    BasicBlock &block = currentFunc->getEntryBlock();
+    inst = block.getFirstNonPHI();
   } else {
     return nullptr;
   }
