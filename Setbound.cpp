@@ -193,44 +193,13 @@ Setbound::getValueByteSize(Value *value)
 }
 
 Value *
-Setbound::getArraySize(DataLayout *DL, Type *type)
-{
-  if (!type->isArrayTy())
-    return nullptr;
-
-  auto elems = type->getArrayNumElements();
-  auto elem_size = xsizeof(DL, type->getArrayElementType());
-
-  auto elem_size_const = dyn_cast<ConstantInt>(elem_size);
-  if (!elem_size)
-    llvm_unreachable("elem_size is not constant");
-
-  size_t total_size = elems * elem_size_const->getZExtValue();
-  return builder->getInt32(total_size);
-}
-
-
-Value *
 Setbound::xsizeof(DataLayout *DL, Type *type)
 {
-  if (type->isArrayTy())
-    return getArraySize(DL, type);
+  TypeSize size = DL->getTypeAllocSize(type);
+  uint64_t bytesize = size.getFixedSize();
 
-  StructType *tstruct = dyn_cast<StructType>(type);
-  if (tstruct) {
-    const StructLayout *sl = DL->getStructLayout(tstruct);
-    return builder->getInt32(sl->getSizeInBytes());
-  }
-
-  unsigned size;
-  if (type->isPointerTy()) {
-    size = DL->getPointerSize();
-  } else {
-    assert(type->getScalarSizeInBits() != 0);
-    size = type->getScalarSizeInBits() / CHAR_BIT;
-  }
-
-  return builder->getInt32(size);
+  assert(bytesize <= UINT32_MAX);
+  return builder->getInt32(bytesize);
 }
 
 /* vim: set et ts=2 sw=2: */

@@ -37,7 +37,6 @@ private:
   llvm::Value *getValueByteSize(llvm::Value *value);
 
   llvm::Value *stripPointerCasts(llvm::Value *value);
-  llvm::Value *getArraySize(llvm::DataLayout *DL, llvm::Type *type);
   llvm::Value *xsizeof(llvm::DataLayout *DL, llvm::Type *type);
 };
 
