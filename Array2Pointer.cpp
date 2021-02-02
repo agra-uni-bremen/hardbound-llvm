@@ -7,6 +7,7 @@ Array2Pointer::runOnFunction(Function &F)
 {
   errs() << "Array2Pointer: ";
   errs().write_escaped(F.getName()) << '\n';
+  currentFunc = &F;
 
   DataLayout dataLayout = F.getParent()->getDataLayout();
   DL = &dataLayout;
@@ -14,7 +15,6 @@ Array2Pointer::runOnFunction(Function &F)
   bool modified = false;
   for (auto it = F.begin(); it != F.end(); it++) {
     BasicBlock &bb = *it;
-    currentBlock = &bb;
 
     for (auto instrIt = bb.begin(); instrIt != bb.end(); instrIt++) {
       Instruction *instr = cast<Instruction>(instrIt);
@@ -44,13 +44,8 @@ Array2Pointer::convertGEP(Type *sElemType, Value *pointer) {
     Instruction *next = inst->getNextNode();
     inst = (next) ? next : inst;
   } else if (dyn_cast<GlobalVariable>(pointer) || dyn_cast<ConstantExpr>(pointer)) {
-    inst = currentBlock->getFirstNonPHI();
-    for (Instruction &i : *currentBlock) {
-      if (isa<PHINode>(i))
-        return nullptr; /* TODO: Can't handle these ATM */
-      inst = &i;
-      break;
-    }
+    BasicBlock &block = currentFunc->getEntryBlock();
+    inst = block.getFirstNonPHI();
   } else {
     return nullptr;
   }
@@ -122,7 +117,7 @@ Array2Pointer::updateConsExprs(Instruction *inst)
     // Taken from ConstantExpr::getAsInstruction().
     SmallVector<Value *, 4> ValueOperands(consExpr->op_begin(), consExpr->op_end());
     ArrayRef<Value*> Ops(ValueOperands);
-    IRBuilder<> builder(inst);
+    IRBuilder<> builder(cast<Instruction>(baseLoad)->getNextNode());
     auto newGEP = builder.CreateGEP(sourceElem, baseLoad, Ops.slice(1));
 
     inst->setOperand(i, newGEP);
