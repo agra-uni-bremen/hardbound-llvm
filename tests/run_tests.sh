@@ -9,9 +9,9 @@ find . -type f \( -perm -u=x -o -perm -g=x -o -perm -o=x \) | while read f; do
 	[ "${f##*/}" = "${0##*/}" ] && continue
 	printf "Running test case %s: " "${f##*/}"
 
-	reg=$(tiny32-vp --intercept-syscalls "${f}" 2>/dev/null | awk '/^a6/ { print $4 }')
-	if [ "${reg}" != "2342" ]; then
-		printf "FAIL [expected %s - got %s]\n" "2342" "${reg}"
+	reg=$(symex-vp --intercept-syscalls "${f}" 2>/dev/null | awk -F' = ' '/^a6/ { print $2 }')
+	if [ "${reg}" != "(none, 2342)" ]; then
+		printf "FAIL [expected %s - got %s]\n" "(none, 2342)" "${reg}"
 		retval=1
 		continue
 	fi
