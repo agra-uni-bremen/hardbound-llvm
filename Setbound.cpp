@@ -142,6 +142,14 @@ Setbound::isInstrumented(Value *value)
 Value *
 Setbound::stripPointerCasts(Value *value)
 {
+  /* From the original HardBound Paper:
+   *
+   *   From HardBound’s point of view, C cast operations are no-ops.
+   *   Consequently, HardBound’s metadata propagation is unaffected
+   *   by casts (and union accesses), and, as a result, the types
+   *   declared in the C program are not taken literally.
+   *
+   */
   for (;;) {
     if (Operator::getOpcode(value) == Instruction::BitCast) {
       value = cast<Operator>(value)->getOperand(0);
