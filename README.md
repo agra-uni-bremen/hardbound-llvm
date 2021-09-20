@@ -41,6 +41,13 @@ be identifiable through LLVM IR [store][llvm store instr] an
 [getelementptr][llvm getelementptr instr] instructions. For each of
 these instructions, append a corresponding `setbound` call.
 
+## Acknowledgements
+
+This work was supported in part by the German Federal Ministry of
+Education and Research (BMBF) within the project Scale4Edge under
+contract no. 16ME0127 and within the project VerSys under contract
+no. 01IW19001.
+
 ## Resources
 
 * https://llvm.org/docs/WritingAnLLVMPass.html
