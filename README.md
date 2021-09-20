@@ -1,6 +1,6 @@
 # hardbound-llvm
 
-LLVM 11 [compiler pass][llvm compiler pass] for [hardbound][hardbound doi] instrumentation.
+LLVM 11 [compiler pass][llvm compiler pass] for [hardbound][hardbound doi] instrumentation for [hardbound-vp][hardbound-vp].
 
 ## Installation
 
@@ -51,3 +51,4 @@ these instructions, append a corresponding `setbound` call.
 [hardbound doi]: https://doi.org/10.1145/1353535.1346295
 [llvm store instr]: https://llvm.org/docs/LangRef.html#store-instruction
 [llvm getelementptr instr]: https://llvm.org/docs/LangRef.html#getelementptr-instruction
+[hardbound-vp]: https://github.com/agra-uni-bremen/hardbound-vp
