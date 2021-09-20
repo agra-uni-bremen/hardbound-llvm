@@ -1,6 +1,6 @@
 # hardbound-llvm
 
-LLVM [compiler pass][llvm compiler pass] for [hardbound][hardbound doi] instrumentation.
+LLVM 11 [compiler pass][llvm compiler pass] for [hardbound][hardbound doi] instrumentation.
 
 ## Installation
 
@@ -46,8 +46,8 @@ these instructions, append a corresponding `setbound` call.
 * https://llvm.org/docs/LangRef.html
 * https://llvm.org/devmtg/2019-10/slides/Warzynski-WritingAnLLVMPass.pdf
 
-[llvm build env]: https://releases.llvm.org/10.0.0/docs/WritingAnLLVMPass.html#setting-up-the-build-environment
-[llvm compiler pass]: https://releases.llvm.org/10.0.0/docs/WritingAnLLVMPass.html
+[llvm build env]: https://releases.llvm.org/11.0.0/docs/WritingAnLLVMPass.html#setting-up-the-build-environment
+[llvm compiler pass]: https://releases.llvm.org/11.0.0/docs/WritingAnLLVMPass.html
 [hardbound doi]: https://doi.org/10.1145/1353535.1346295
 [llvm store instr]: https://llvm.org/docs/LangRef.html#store-instruction
 [llvm getelementptr instr]: https://llvm.org/docs/LangRef.html#getelementptr-instruction
