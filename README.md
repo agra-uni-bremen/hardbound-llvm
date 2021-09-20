@@ -1,6 +1,6 @@
 # hardbound-llvm
 
-LLVM 11 [compiler pass][llvm compiler pass] for [hardbound][hardbound doi] instrumentation for [hardbound-vp][hardbound-vp].
+LLVM 11 [compiler pass][llvm compiler pass] for [HardBound][hardbound doi] instrumentation for [hardbound-vp][hardbound-vp].
 
 ## Installation
 
