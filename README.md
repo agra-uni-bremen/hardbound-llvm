@@ -21,6 +21,8 @@ After generating `LLVMHardbound.so` run:
 
 	$ clang -Xclang -load -Xclang LLVMHardbound.so code.c
 
+Afterwards, instrumented software must be executed with [hardbound-vp][hardbound-vp].
+
 ## Tests
 
 Several tiny test programs are available, these must be compiled using:
